@@ -421,3 +421,300 @@ And the error message is a single human-readable sentence
 | Unknown params              | Silently ignored                                     |
 | Error strategy              | Fail-fast, first error wins                          |
 | Ordering                    | Input order preserved                                |
+
+---
+---
+
+# Acceptance Scenarios — End-to-End
+
+The scenarios below cover the full user experience: opening URLs with both `equity` and `benchmark` params, viewing charts and summaries, handling errors, and operating without API keys.
+
+> **Full URL format:** `/?equity=TICKER,TICKER,...&benchmark=gold|eth|usd&range=1y`
+
+---
+
+## A1. Happy path — equities vs gold benchmark
+
+```
+Given  the URL is /?equity=aapl,msft&benchmark=gold
+When   the page loads
+Then   a performance chart is displayed
+  And  the chart shows normalized % change lines for AAPL, MSFT, and Gold
+  And  each line is visually distinguishable (color or label)
+  And  a summary section is displayed below the chart
+  And  the summary includes total return % for each equity and the benchmark
+  And  the time range defaults to 1 year
+```
+
+## A2. Happy path — equities vs ETH benchmark
+
+```
+Given  the URL is /?equity=tsmc,aapl,msft&benchmark=eth
+When   the page loads
+Then   a performance chart is displayed
+  And  the chart shows normalized % change lines for TSMC, AAPL, MSFT, and ETH
+  And  the summary shows each ticker's total return over the default period
+```
+
+## A3. Happy path — equities vs USD (fiat / cash baseline)
+
+```
+Given  the URL is /?equity=aapl&benchmark=usd
+When   the page loads
+Then   the chart shows AAPL performance against a flat USD baseline (0% return)
+  And  the summary clearly labels USD as the cash/fiat baseline
+```
+
+## A4. Happy path — multiple benchmarks via pipe separator
+
+```
+Given  the URL is /?equity=aapl,msft&benchmark=gold|eth|usd
+When   the page loads
+Then   the chart includes lines for AAPL, MSFT, Gold, ETH, and USD
+  And  benchmarks are visually distinct from equities (e.g. dashed lines vs solid)
+  And  the summary groups equities and benchmarks separately
+```
+
+---
+
+## A5. Explicit time range — range param
+
+```
+Given  the URL is /?equity=aapl&benchmark=gold&range=5y
+When   the page loads
+Then   the chart displays 5 years of historical data
+  And  the summary reflects 5-year total returns
+```
+
+## A6. Explicit time range — YTD
+
+```
+Given  the URL is /?equity=msft&benchmark=eth&range=ytd
+When   the page loads
+Then   the chart displays data from January 1 of the current year to today
+  And  the summary reflects year-to-date returns
+```
+
+---
+
+## A7. Chart assumptions — clearly stated
+
+```
+Given  any valid URL with equity and benchmark params
+When   the page loads successfully
+Then   the chart header or footer displays the assumptions:
+       - "All returns are total returns (dividends reinvested where applicable)"
+       - "Benchmark prices are spot prices in USD"
+       - "Data sourced from [provider name]"
+  And  the normalization method is stated (e.g. "Indexed to 100 at start date")
+```
+
+---
+
+## A8. Invalid equity ticker — helpful error
+
+```
+Given  the URL is /?equity=ZZZZZZ&benchmark=gold
+When   the page loads
+  And  the data provider returns no data for "ZZZZZZ"
+Then   the page displays a clear error message
+  And  the error says "No data found for ticker: ZZZZZZ"
+  And  the error suggests checking the ticker symbol
+  And  no chart is rendered
+```
+
+## A9. Mix of valid and invalid tickers
+
+```
+Given  the URL is /?equity=aapl,ZZZZZZ,msft&benchmark=gold
+When   the page loads
+  And  the data provider returns no data for "ZZZZZZ"
+Then   the page displays an error for the invalid ticker
+  And  the error says "No data found for ticker: ZZZZZZ"
+  And  valid tickers are not partially rendered (fail as a group)
+```
+
+## A10. Invalid benchmark — unrecognized benchmark name
+
+```
+Given  the URL is /?equity=aapl&benchmark=banana
+When   the page loads
+Then   the page displays a clear error message
+  And  the error says "Unknown benchmark: banana"
+  And  the error lists valid benchmarks: gold, eth, usd
+  And  no chart is rendered
+```
+
+## A11. Empty benchmark param
+
+```
+Given  the URL is /?equity=aapl&benchmark=
+When   the page loads
+Then   the page displays only the equity performance (no benchmark line)
+  Or   the page displays an error requesting a benchmark value
+```
+
+## A12. Missing benchmark param entirely
+
+```
+Given  the URL is /?equity=aapl
+When   the page loads
+Then   the page displays the equity performance without a benchmark line
+  And  the summary shows absolute returns only (no relative comparison)
+```
+
+---
+
+## A13. No query params — landing state
+
+```
+Given  the URL is / (no query params)
+When   the page loads
+Then   the page displays a welcome/empty state
+  And  the empty state explains the URL format:
+       "Add ?equity=AAPL,MSFT&benchmark=gold to compare performance"
+  And  example links are provided for the user to click
+```
+
+## A14. Only benchmark param — no equities
+
+```
+Given  the URL is /?benchmark=gold
+When   the page loads
+Then   the page displays an error: "equity param is required"
+  And  no chart is rendered
+```
+
+---
+
+## A15. Auth-free operation — no API key required for basic use
+
+```
+Given  the app is started with no environment variables set
+  And  the data provider does not require authentication (free tier / public API)
+When   a user opens /?equity=aapl&benchmark=gold
+Then   the page loads and displays the chart and summary
+  And  no login, API key prompt, or auth wall is shown
+```
+
+## A16. API key required — clear env var prompt
+
+```
+Given  the app is started without the required MARKET_DATA_API_KEY env var
+  And  the data provider requires an API key
+When   a user opens /?equity=aapl&benchmark=gold
+Then   the page displays a clear configuration error
+  And  the error says "Missing API key. Set the MARKET_DATA_API_KEY environment variable."
+  And  the error includes a link or reference to where to obtain the key
+  And  no chart is rendered
+```
+
+## A17. API key present — data loads successfully
+
+```
+Given  the app is started with MARKET_DATA_API_KEY=valid_key_here
+When   a user opens /?equity=aapl&benchmark=gold
+Then   the data provider is called with the configured key
+  And  the chart and summary render successfully
+```
+
+## A18. API rate limit or network error
+
+```
+Given  the data provider returns a rate limit error (HTTP 429) or network timeout
+When   the page attempts to load data
+Then   the page displays a clear error: "Data temporarily unavailable. Please try again."
+  And  no partial or stale chart is shown
+  And  a retry button or auto-retry after delay is offered
+```
+
+---
+
+## A19. Shareable URL — state fully encoded in query params
+
+```
+Given  a user is viewing /?equity=tsmc,aapl,msft&benchmark=gold|eth&range=1y
+When   they copy the URL from the browser address bar
+  And  paste it in a new browser tab
+Then   the exact same chart and summary are displayed
+  And  no server-side session or cookie is required
+```
+
+## A20. URL update — changing params updates the view
+
+```
+Given  the user is viewing /?equity=aapl&benchmark=gold
+When   they manually change the URL to /?equity=msft&benchmark=eth
+  And  press Enter
+Then   the page re-renders with MSFT vs ETH data
+  And  no full page reload is required (client-side navigation)
+```
+
+---
+
+## A21. Summary table content
+
+```
+Given  a valid URL with equities and benchmark
+When   the page loads successfully
+Then   the summary table includes for each ticker:
+       - Ticker symbol
+       - Start price (at beginning of range)
+       - End price (at end of range)
+       - Total return %
+       - Annualized return % (if range > 1 year)
+  And  the benchmark rows are clearly separated from equity rows
+```
+
+## A22. Chart interaction — hover/tooltip
+
+```
+Given  a chart is displayed with multiple lines
+When   the user hovers over a data point
+Then   a tooltip shows the date and the value for each line at that date
+  And  the tooltip is readable and does not obscure critical data
+```
+
+---
+
+## A23. Mobile responsiveness
+
+```
+Given  the user opens a valid URL on a mobile device (viewport < 768px)
+When   the page loads
+Then   the chart scales to fit the viewport width
+  And  the summary table is scrollable or stacks vertically
+  And  all text remains legible
+```
+
+---
+
+## Benchmark parameter contract
+
+| Benchmark value | Description                              |
+| --------------- | ---------------------------------------- |
+| `gold`          | Spot gold price in USD (XAU/USD)         |
+| `eth`           | Ethereum price in USD (ETH/USD)          |
+| `usd`           | US Dollar cash baseline (flat 0% line)   |
+
+- Benchmark names are **case-insensitive** (e.g. `Gold`, `GOLD`, `gold` all valid)
+- Multiple benchmarks are separated by pipe: `benchmark=gold|eth|usd`
+- Unknown benchmark names produce a clear error listing valid options
+- The benchmark param is **optional** — omitting it shows equity-only performance
+
+## Range parameter contract
+
+| Range value | Description                    |
+| ----------- | ------------------------------ |
+| `1m`        | 1 month                       |
+| `3m`        | 3 months                      |
+| `6m`        | 6 months                      |
+| `ytd`       | Year to date                  |
+| `1y`        | 1 year (default)              |
+| `3y`        | 3 years                       |
+| `5y`        | 5 years                       |
+| `max`       | Maximum available history      |
+
+- Range values are **case-insensitive**
+- Invalid range values produce a clear error listing valid options
+- If omitted, defaults to `1y`
