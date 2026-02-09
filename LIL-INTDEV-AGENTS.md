@@ -49,7 +49,7 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 | Component lib    | **SRCL** (in-repo)                 | `components/` — reuse existing components where possible   |
 | Hosting          | **Vercel**                         | Zero-config deployment; see README                         |
 | Dev server port  | `10000`                            | `npm run dev` → `http://localhost:10000`                   |
-| Path aliases     | `@common/*`, `@components/*`, etc. | Defined in `tsconfig.json`                                 |
+| Path aliases     | `@root/*`, `@common/*`, `@components/*`, `@system/*`, `@demos/*`, `@data/*`, `@pages/*`, `@modules/*` | Defined in `tsconfig.json` — use these instead of relative paths |
 
 ---
 
@@ -145,30 +145,55 @@ Do **not** add Redis, an in-memory LRU, or any external cache for MVP. Keep it s
 
 ## 7. Directory Structure (target)
 
+Files marked ✓ already exist. Files marked ○ need to be created.
+
 ```
 app/
-  page.tsx                 ← landing / compare page (reads query params)
+  layout.tsx               ✓ root layout (Providers wrapper, theme-light body)
+  page.tsx                 ✓ currently SRCL kitchen sink — will become compare page
+  head.tsx                 ✓ head metadata
+  manifest.ts              ✓ web manifest
+  robots.ts                ✓ robots config
+  sitemap.ts               ✓ sitemap config
   api/
-    market-data/route.ts   ← proxies equity price requests
-    benchmark/route.ts     ← proxies benchmark price requests
+    market-data/route.ts   ○ proxies equity price requests
+    benchmark/route.ts     ○ proxies benchmark price requests
 common/
-  constants.ts             ← app-wide constants (API URLs, limits)
-  parser.ts                ← v1 query parser (equity, benchmark, range)
-  types.ts                 ← shared TypeScript interfaces
+  constants.ts             ✓ app-wide constants (API URLs, limits)
+  utilities.ts             ✓ utility functions
+  hooks.ts                 ✓ custom React hooks
+  queries.ts               ✓ data-fetching helpers
+  server.ts                ✓ server-side utilities
+  position.ts              ✓ position utilities
+  parser.ts                ○ v1 query parser (equity, benchmark, range)
+  types.ts                 ○ shared TypeScript interfaces (PricePoint, SeriesData)
 components/
-  Chart.tsx                ← performance chart component
-  Chart.module.css
-  Summary.tsx              ← summary table component
-  Summary.module.css
-  ErrorState.tsx           ← error display component
-  LandingState.tsx         ← empty/welcome state (scenario A13)
+  Chart.tsx                ○ performance chart component
+  Chart.module.css         ○
+  Summary.tsx              ○ summary table component
+  Summary.module.css       ○
+  ErrorState.tsx           ○ error display component
+  LandingState.tsx         ○ empty/welcome state (scenario A13)
+  (100+ SRCL components)   ✓ Card, Table, Grid, Row, Button, etc.
 ```
 
-Place new files in the pattern above. Reuse existing SRCL components (Card, Table, Grid, etc.) for layout.
+Place new files in the pattern above. Reuse existing SRCL components (Card, Table, Grid, Row, DataTable, AlertBanner, etc.) for layout. Browse `components/` to discover available primitives before creating new ones.
 
 ---
 
-## 8. Roles and Responsibilities
+## 8. Existing Codebase Notes
+
+The repo is a fork of the **SRCL** component library (sacred.computer). Key things to know:
+
+- **`app/page.tsx`** is currently a kitchen-sink demo of all SRCL components with `export const dynamic = 'force-static'`. The Page Integration SOUL will replace this content with the portfolio compare UI. Remove `force-static` since the compare page reads query params at request time.
+- **`app/concept-1/` and `app/concept-2/`** are alternative layout demos. Leave them in place — they don't interfere with the compare page.
+- **`app/layout.tsx`** wraps everything in `<Providers>` with `className="theme-light"`. Do not modify the root layout unless necessary.
+- **`next.config.js`** is minimal (`devIndicators: false`). No special configuration needed for API routes.
+- **`components/page/DefaultLayout.tsx`** and **`components/page/DefaultActionBar.tsx`** provide the standard page shell. Consider reusing `DefaultLayout` for the compare page.
+
+---
+
+## 9. Roles and Responsibilities
 
 Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARIOS.md.
 
@@ -183,7 +208,7 @@ Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARI
 
 ---
 
-## 9. How to Add a New Data Source
+## 10. How to Add a New Data Source
 
 1. Create or extend a Route Handler under `app/api/`.
 2. Normalize the response to the `SeriesData` interface (§4.3).
@@ -193,7 +218,7 @@ Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARI
 
 ---
 
-## 10. How to Add a New Chart or UI Component
+## 11. How to Add a New Chart or UI Component
 
 1. Create the component in `components/` with a matching `.module.css` file.
 2. Follow the SRCL monospace aesthetic — use the existing CSS custom properties and the terminal-style design language.
@@ -203,7 +228,7 @@ Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARI
 
 ---
 
-## 11. Guardrails
+## 12. Guardrails
 
 - **No paid keys required for MVP.** If every free option is exhausted, document the cheapest path and make it optional.
 - **No additional runtime dependencies** without justification. Charting can be done with `<canvas>` or `<svg>` directly — avoid adding a charting library unless the team agrees.
