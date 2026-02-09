@@ -1,26 +1,40 @@
-# SRCL
+# Portfolio Compare
 
-**[Live Demo](https://sacred.computer)**
+A small web app that accepts `?equity=TSMC,AAPL,MSFT&benchmark=gold|eth|usd` and displays comparable performance over time.
 
-SRCL is an open-source React component and style repository that helps you build web applications, desktop applications, and static websites with terminal aesthetics. Its modular, easy-to-use components emphasize precise monospace character spacing and line heights, enabling you to quickly copy and paste implementations while maintaining a clean, efficient codebase.
+Built with [SRCL](https://sacred.computer) — a React component library with terminal aesthetics.
+
+## Usage
+
+```
+/?equity=AAPL,MSFT&benchmark=gold
+/?equity=TSMC,AAPL,MSFT&benchmark=gold|eth|usd
+/?equity=AAPL&benchmark=eth&range=5y
+```
+
+### Query parameters
+
+| Parameter   | Description                        | Example            |
+| ----------- | ---------------------------------- | ------------------ |
+| `equity`    | Comma-separated ticker symbols     | `AAPL,MSFT,GOOG`  |
+| `benchmark` | Pipe-separated benchmark names     | `gold\|eth\|usd`  |
+| `range`     | Time range (default: `1y`)         | `1m,3m,6m,ytd,1y,3y,5y,max` |
+
+### Benchmarks
+
+| Value  | Description                    |
+| ------ | ------------------------------ |
+| `gold` | Spot gold price (XAU/USD)      |
+| `eth`  | Ethereum price (ETH/USD)       |
+| `usd`  | US Dollar cash baseline (0%)   |
+
+## Development
 
 ```sh
 npm install
 npm run dev
 ```
 
-Go to `http://localhost:10000` in your browser of choice.
+Go to `http://localhost:10000` in your browser.
 
 We use [Vercel](https://vercel.com/home) for hosting.
-
-### Scripts (Optional)
-
-If you need to run node script without running the server, use this example to get started
-
-```sh
-npm run script example
-```
-
-### Contact
-
-If you have questions ping me on Twitter, [@wwwjim](https://www.twitter.com/wwwjim). Or you can ping [@internetxstudio](https://x.com/internetxstudio).
