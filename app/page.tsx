@@ -11,6 +11,7 @@ import ActionBar from '@components/ActionBar';
 import ActionButton from '@components/ActionButton';
 import ActionListItem from '@components/ActionListItem';
 import AlertBanner from '@components/AlertBanner';
+import CopyURLExamples from '@components/CopyURLExamples';
 import AS400 from '@components/examples/AS400';
 import Avatar from '@components/Avatar';
 import Badge from '@components/Badge';
@@ -136,6 +137,44 @@ export default async function Page(props) {
           {Package.name.toUpperCase()} <Badge>{Package.version}</Badge>
         </Row>
         <Row>{Package.description}</Row>
+      </Grid>
+
+      <Grid>
+        <Accordion defaultValue={true} title="PORTFOLIO COMPARE">
+          Compare equity portfolio performance against benchmarks. The entire application state is encoded in the URL — copy and share any URL to reproduce the same view.
+          <br />
+          <br />
+          URL format: <code>/?equity=TICKER,TICKER,...&benchmark=BENCHMARK|BENCHMARK&range=RANGE</code>
+          <br />
+          <br />
+          <CopyURLExamples />
+          <br />
+        </Accordion>
+
+        <Accordion defaultValue={true} title="ASSUMPTIONS">
+          <Card title="METHODOLOGY">
+            <ActionListItem icon={`⊹`}>Equal-weight portfolio — each equity is weighted 1/N</ActionListItem>
+            <ActionListItem icon={`⊹`}>No rebalancing — buy-and-hold from start date</ActionListItem>
+            <ActionListItem icon={`⊹`}>Normalized % change — all series indexed to 0% at start</ActionListItem>
+            <ActionListItem icon={`⊹`}>Total returns — dividends reinvested where applicable</ActionListItem>
+            <ActionListItem icon={`⊹`}>Closing prices in USD — daily close for equities</ActionListItem>
+            <ActionListItem icon={`⊹`}>Benchmark spot prices — Gold and ETH in USD</ActionListItem>
+            <ActionListItem icon={`⊹`}>USD benchmark — flat 0% return line (cash baseline)</ActionListItem>
+          </Card>
+          <br />
+        </Accordion>
+
+        <Accordion defaultValue={true} title="BENCHMARKS">
+          <Card title="AVAILABLE">
+            <ActionListItem icon={`⊹`}>gold — Spot gold price in USD (XAU/USD)</ActionListItem>
+            <ActionListItem icon={`⊹`}>eth — Ethereum price in USD (ETH/USD)</ActionListItem>
+            <ActionListItem icon={`⊹`}>usd — US Dollar cash baseline (flat 0% line)</ActionListItem>
+          </Card>
+          <br />
+          Benchmark names are case-insensitive. Combine multiple with pipe: benchmark=gold|eth|usd
+          <br />
+          <br />
+        </Accordion>
       </Grid>
 
       <DebugGrid />
