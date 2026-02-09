@@ -46,7 +46,7 @@ These constraints define v1 and **must not be violated** without a new version b
 | --- | --- | --- |
 | **Auth-free** | The app works without login, API keys, or any auth wall for the end user. Server-side keys for data providers are invisible to visitors. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5), scenario A15 |
 | **Equal-weight only** | Every equity in `equity=` gets weight 1/N. There is no syntax for custom weights in v1. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5) |
-| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. This reserves the syntax for the v2 weighted-portfolio feature. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
+| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. This reserves the syntax for the v2 weighted-portfolio feature. See [`docs/weights-v2.md`](./docs/weights-v2.md) for the full v2 contract. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
 | **`=` is also reserved** | Same treatment as `:`. | Scenario 7.2 |
 
 ---

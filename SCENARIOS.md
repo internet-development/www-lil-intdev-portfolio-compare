@@ -581,10 +581,14 @@ In v1, all of the following are **explicitly rejected**:
 
 **v2 design notes (out of scope for v1 implementation):**
 - Weight values will follow the colon: `TICKER:WEIGHT`
-- Weights are decimal fractions (e.g., `0.6`) or integer percents (e.g., `60`)
-- If all tickers have weights, they must sum to 1.0 (or 100%)
+- Weights are decimal fractions (e.g., `0.6`) or integer percents (e.g., `60`) — mixing formats within a portfolio is rejected
+- If all tickers have weights, they must sum to 1.0 (or 100%) within a tolerance of ±0.01 (±1 for percents)
 - If no ticker has a weight, v2 falls back to v1 equal-weight behavior
-- Mixed weighted/unweighted tickers within a portfolio are undefined
+- Mixed weighted/unweighted tickers within a portfolio are **rejected** (no implicit remainder)
+- Negative and zero weights are rejected
+- Rebalancing semantics are deferred beyond v2
+
+> **Full v2 contract:** See [`docs/weights-v2.md`](./docs/weights-v2.md) for the complete specification, acceptance scenarios, validation rules, and open decisions.
 
 ---
 
