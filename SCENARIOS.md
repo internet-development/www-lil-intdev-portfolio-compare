@@ -286,6 +286,8 @@ Then an error is returned with message: "Invalid character '|' in ticker 'AAPL|M
 
 ## 8. Invalid Ticker Format
 
+`MAX_TICKER_LENGTH = 10`
+
 ### 8.1 Numeric-only ticker is rejected
 
 ```
