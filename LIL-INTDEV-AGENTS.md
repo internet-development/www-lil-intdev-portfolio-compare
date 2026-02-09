@@ -6,6 +6,21 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 
 ---
 
+## v1 Contract at a Glance
+
+> **Read this first.** These four rules define v1. Do not violate them.
+
+| Rule | What it means |
+| --- | --- |
+| **Auth-free** | No login, no API key prompt, no auth wall for the end user. Server-side keys are invisible. |
+| **Equal-weight only** | Every equity in `equity=` gets weight 1/N. There is no custom-weight syntax in v1. |
+| **`:` is reserved** | A colon inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** with a clear v2-reserved message. Never silently accept it. |
+| **`=` is reserved** | Same treatment as `:`. |
+
+The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A24 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
+
+---
+
 ## 1. Architecture Overview
 
 ```
@@ -40,14 +55,14 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 
 ### v1 Constraints
 
-These constraints define v1 and **must not be violated** without a new version bump:
+These constraints define v1 and **must not be violated** without a new version bump (see also the one-page summary at the top of this file):
 
 | Constraint | Detail | Origin |
 | --- | --- | --- |
-| **Auth-free** | The app works without login, API keys, or any auth wall for the end user. Server-side keys for data providers are invisible to visitors. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5), scenario A15 |
+| **Auth-free** | The app works without login, API keys, or any auth wall for the end user. Server-side keys for data providers are invisible to visitors. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5), scenario A16 |
 | **Equal-weight only** | Every equity in `equity=` gets weight 1/N. There is no syntax for custom weights in v1. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5) |
-| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. This reserves the syntax for the v2 weighted-portfolio feature. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
-| **`=` is also reserved** | Same treatment as `:`. | Scenario 7.2 |
+| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. **Do not silently accept, strip, or ignore colons.** This reserves the syntax for the v2 weighted-portfolio feature. See SCENARIOS.md §7 and §14. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
+| **`=` is also reserved** | Same treatment as `:`. Reject with a clear message, never silently accept. | Scenario 7.3 |
 
 ---
 
@@ -276,23 +291,35 @@ Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARI
 
 ## 13. Running the App
 
+### 13.0 Quick start
+
 ```sh
-npm install
-npm run dev          # → http://localhost:10000
-npm run build        # production build
-npm run lint         # next lint
+npm install                 # install dependencies (node >= 18)
+npm run dev                 # dev server → http://localhost:10000
 ```
 
-### 13.1 Tests
+Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold` to verify the app is running.
+
+### 13.1 Available npm scripts
+
+| Script | Command | What it does |
+| --- | --- | --- |
+| `npm run dev` | `next -p 10000` | Start dev server on port 10000 |
+| `npm run build` | `next build` | Production build |
+| `npm run start` | `PORT=10000 next start` | Start production server on port 10000 |
+| `npm run lint` | `next lint` | Run ESLint via Next.js |
+
+### 13.2 Tests
 
 **No test runner is configured yet.** `package.json` has no `test` script and no testing libraries (Jest, Vitest, etc.) are installed.
 
 When a test runner is added:
 - Parser tests should live next to the parser (e.g. `common/parser.test.ts`).
 - Every scenario in `SCENARIOS.md` sections 1–13 must have a corresponding unit test.
-- End-to-end scenarios (A1–A23) should have integration or e2e tests as the UI is built out.
+- End-to-end scenarios (A1–A24) should have integration or e2e tests as the UI is built out.
+- Run tests with `npm test` (once configured).
 
-### 13.2 Entrypoints
+### 13.3 Entrypoints
 
 | What | File | Notes |
 | --- | --- | --- |
