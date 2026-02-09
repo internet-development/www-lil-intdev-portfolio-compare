@@ -3,7 +3,10 @@
 Strict, testable scenarios for the `equity=` URL query parameter parser.
 These define the **v1 acceptance contract** — any behavior not listed here is undefined and must be rejected.
 
-> **URL format:** `?equity=TICKER,TICKER,...`
+> **v1 is equal-weight only.** Every ticker in a portfolio receives weight 1/N. Custom weights are reserved for v2 (see §7 and §14).
+
+> **URL format (single portfolio):** `?equity=TICKER,TICKER,...`
+> **URL format (multi-portfolio):** `?equity=TICKER,TICKER,...&equity=TICKER,TICKER,...`
 
 ---
 
@@ -14,7 +17,7 @@ These define the **v1 acceptance contract** — any behavior not listed here is 
 ```
 Given the URL query string is "?equity=AAPL"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL"]
+Then portfolio 1 contains ["AAPL"]
 And no error is returned
 ```
 
@@ -23,7 +26,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity=AAPL,MSFT,GOOG"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL", "MSFT", "GOOG"]
+Then portfolio 1 contains ["AAPL", "MSFT", "GOOG"]
 And no error is returned
 ```
 
@@ -32,8 +35,29 @@ And no error is returned
 ```
 Given the URL query string is "?equity=GOOG,AAPL,MSFT"
 When the v1 query parser processes the input
-Then the parsed tickers are ["GOOG", "AAPL", "MSFT"]
+Then portfolio 1 contains ["GOOG", "AAPL", "MSFT"]
 And the order matches the input order exactly
+```
+
+### 1.4 Multiple portfolios via repeated equity params
+
+```
+Given the URL query string is "?equity=AAPL,MSFT&equity=GOOG,TSLA"
+When the v1 query parser processes the input
+Then portfolio 1 contains ["AAPL", "MSFT"]
+And portfolio 2 contains ["GOOG", "TSLA"]
+And no error is returned
+```
+
+### 1.5 Single ticker per portfolio, multiple portfolios
+
+```
+Given the URL query string is "?equity=AAPL&equity=MSFT&equity=GOOG"
+When the v1 query parser processes the input
+Then portfolio 1 contains ["AAPL"]
+And portfolio 2 contains ["MSFT"]
+And portfolio 3 contains ["GOOG"]
+And no error is returned
 ```
 
 ---
@@ -45,7 +69,7 @@ And the order matches the input order exactly
 ```
 Given the URL query string is "?equity=aapl,msft"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL", "MSFT"]
+Then portfolio 1 contains ["AAPL", "MSFT"]
 And no error is returned
 ```
 
@@ -54,7 +78,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity=Aapl,mSfT,gOOg"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL", "MSFT", "GOOG"]
+Then portfolio 1 contains ["AAPL", "MSFT", "GOOG"]
 And no error is returned
 ```
 
@@ -67,7 +91,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity= AAPL , MSFT "
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL", "MSFT"]
+Then portfolio 1 contains ["AAPL", "MSFT"]
 And no error is returned
 ```
 
@@ -84,7 +108,7 @@ Then an error is returned with message: "Empty ticker at position 2"
 ```
 Given the URL query string is "?equity= AAPL,MSFT "
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL", "MSFT"]
+Then portfolio 1 contains ["AAPL", "MSFT"]
 And no error is returned
 ```
 
@@ -92,7 +116,7 @@ And no error is returned
 
 ## 4. Deduplication
 
-### 4.1 Exact duplicate tickers are rejected
+### 4.1 Exact duplicate tickers within a portfolio are rejected
 
 ```
 Given the URL query string is "?equity=AAPL,MSFT,AAPL"
@@ -100,7 +124,7 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Duplicate ticker: AAPL"
 ```
 
-### 4.2 Case-insensitive duplicates are rejected
+### 4.2 Case-insensitive duplicates within a portfolio are rejected
 
 ```
 Given the URL query string is "?equity=AAPL,aapl"
@@ -116,25 +140,37 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Duplicate ticker: MSFT"
 ```
 
+### 4.4 Same ticker allowed across different portfolios
+
+```
+Given the URL query string is "?equity=AAPL,MSFT&equity=AAPL,GOOG"
+When the v1 query parser processes the input
+Then portfolio 1 contains ["AAPL", "MSFT"]
+And portfolio 2 contains ["AAPL", "GOOG"]
+And no error is returned
+```
+
 ---
 
 ## 5. Max Tickers Limit
 
-### 5.1 At the maximum (10 tickers)
+`MAX_TICKERS_PER_PORTFOLIO = 20`
+
+### 5.1 At the maximum (20 tickers)
 
 ```
-Given the URL query string is "?equity=A,B,C,D,E,F,G,H,I,J"
+Given the URL query string is "?equity=A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T"
 When the v1 query parser processes the input
-Then the parsed tickers are ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+Then portfolio 1 contains ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"]
 And no error is returned
 ```
 
 ### 5.2 Exceeding the maximum
 
 ```
-Given the URL query string is "?equity=A,B,C,D,E,F,G,H,I,J,K"
+Given the URL query string is "?equity=A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U"
 When the v1 query parser processes the input
-Then an error is returned with message: "Too many tickers: 11 exceeds maximum of 10"
+Then an error is returned with message: "Too many tickers in portfolio 1: 21 exceeds maximum of 20"
 ```
 
 ---
@@ -146,7 +182,7 @@ Then an error is returned with message: "Too many tickers: 11 exceeds maximum of
 ```
 Given the URL query string is ""
 When the v1 query parser processes the input
-Then the parsed tickers are []
+Then the parsed portfolios are []
 And no error is returned
 ```
 
@@ -192,9 +228,9 @@ Then an error is returned with message: "Empty ticker at position 1"
 
 ---
 
-## 7. Reserved Syntax Rejection
+## 7. Reserved Syntax Rejection (v2 Weight Syntax)
 
-These characters are reserved for v2 weight syntax and must be rejected in v1.
+v1 is **strictly equal-weight**. The colon character (`:`) is reserved for v2 weight syntax (e.g. `equity=AAPL:0.6,MSFT:0.4`). Any occurrence of `:` — literal or URL-encoded — must be rejected with a message that explains it is reserved for v2.
 
 ### 7.1 Colon inside a token is rejected
 
@@ -204,7 +240,17 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
 ```
 
-### 7.2 Equals sign inside a token is rejected
+### 7.2 URL-encoded colon (%3A) inside a token is rejected
+
+```
+Given the URL query string is "?equity=AAPL%3A0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
+```
+
+> **Implementation note:** URL decoding happens before parsing, so `%3A` becomes `:` and is caught by the same colon-rejection rule.
+
+### 7.3 Equals sign inside a token is rejected
 
 ```
 Given the URL query string is "?equity=AAPL=0.5"
@@ -212,7 +258,7 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character '=' in ticker 'AAPL=0.5' — equals signs are reserved"
 ```
 
-### 7.3 Colon in one of multiple tokens
+### 7.4 Colon in one of multiple tokens
 
 ```
 Given the URL query string is "?equity=AAPL,MSFT:0.3,GOOG"
@@ -220,7 +266,7 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character ':' in ticker 'MSFT:0.3' — colons are reserved for v2 weight syntax"
 ```
 
-### 7.4 Semicolon is rejected
+### 7.5 Semicolon is rejected
 
 ```
 Given the URL query string is "?equity=AAPL;MSFT"
@@ -228,7 +274,7 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character ';' in ticker 'AAPL;MSFT'"
 ```
 
-### 7.5 Pipe is rejected
+### 7.6 Pipe is rejected
 
 ```
 Given the URL query string is "?equity=AAPL|MSFT"
@@ -277,7 +323,7 @@ Then an error is returned with message: "Ticker too long: 'ABCDEFGHIJK' exceeds 
 ```
 Given the URL query string is "?equity=BRK.B"
 When the v1 query parser processes the input
-Then the parsed tickers are ["BRK.B"]
+Then portfolio 1 contains ["BRK.B"]
 And no error is returned
 ```
 
@@ -286,7 +332,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity=BF-B"
 When the v1 query parser processes the input
-Then the parsed tickers are ["BF-B"]
+Then portfolio 1 contains ["BF-B"]
 And no error is returned
 ```
 
@@ -299,7 +345,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity=AAPL%2CMSFT"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL", "MSFT"]
+Then portfolio 1 contains ["AAPL", "MSFT"]
 And no error is returned
 ```
 
@@ -308,7 +354,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity=%20AAPL%20"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL"]
+Then portfolio 1 contains ["AAPL"]
 And no error is returned
 ```
 
@@ -317,21 +363,67 @@ And no error is returned
 ```
 Given the URL query string is "?equity=+AAPL+"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL"]
+Then portfolio 1 contains ["AAPL"]
 And no error is returned
+```
+
+### 9.4 URL-encoded colon (%3A) is rejected (same as literal colon)
+
+```
+Given the URL query string is "?equity=MSFT%3A0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Invalid character ':' in ticker 'MSFT:0.5' — colons are reserved for v2 weight syntax"
 ```
 
 ---
 
-## 10. Multiple equity Parameters
+## 10. Multiple equity Parameters (Multi-Portfolio)
 
-### 10.1 Duplicate equity params — only the first is used
+`MAX_PORTFOLIOS = 5`
+
+Each `equity` query parameter defines one portfolio. Multiple `equity` params define multiple portfolios for comparison. Each portfolio is independently validated.
+
+### 10.1 Two portfolios
 
 ```
-Given the URL query string is "?equity=AAPL&equity=MSFT"
+Given the URL query string is "?equity=AAPL,MSFT&equity=GOOG,TSLA,NVDA"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL"]
-And a warning is returned: "Multiple equity parameters found — only the first is used"
+Then portfolio 1 contains ["AAPL", "MSFT"]
+And portfolio 2 contains ["GOOG", "TSLA", "NVDA"]
+And no error is returned
+```
+
+### 10.2 At the maximum (5 portfolios)
+
+```
+Given the URL query string is "?equity=AAPL&equity=MSFT&equity=GOOG&equity=TSLA&equity=NVDA"
+When the v1 query parser processes the input
+Then 5 portfolios are parsed, each with one ticker
+And no error is returned
+```
+
+### 10.3 Exceeding the maximum number of portfolios
+
+```
+Given the URL query string is "?equity=A&equity=B&equity=C&equity=D&equity=E&equity=F"
+When the v1 query parser processes the input
+Then an error is returned with message: "Too many portfolios: 6 exceeds maximum of 5"
+```
+
+### 10.4 Error in second portfolio does not affect first
+
+```
+Given the URL query string is "?equity=AAPL,MSFT&equity=GOOG,,TSLA"
+When the v1 query parser processes the input
+Then an error is returned with message: "Empty ticker at position 2 in portfolio 2"
+```
+
+### 10.5 Empty second equity param
+
+```
+Given the URL query string is "?equity=AAPL&equity="
+When the v1 query parser processes the input
+Then an error is returned with message: "Empty equity parameter in portfolio 2"
 ```
 
 ---
@@ -343,7 +435,7 @@ And a warning is returned: "Multiple equity parameters found — only the first 
 ```
 Given the URL query string is "?equity=AAPL&foo=bar"
 When the v1 query parser processes the input
-Then the parsed tickers are ["AAPL"]
+Then portfolio 1 contains ["AAPL"]
 And no error is returned
 And the "foo" parameter is ignored
 ```
@@ -363,9 +455,9 @@ Then an error is returned with message: "Duplicate ticker: AAPL"
 ### 12.2 Trailing comma + max limit
 
 ```
-Given the URL query string is "?equity=A,B,C,D,E,F,G,H,I,J,"
+Given the URL query string is "?equity=A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,"
 When the v1 query parser processes the input
-Then an error is returned with message: "Empty ticker at position 11"
+Then an error is returned with message: "Empty ticker at position 21"
 ```
 
 ### 12.3 Reserved char in dedup context
@@ -376,7 +468,15 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
 ```
 
-> Note: The parser should reject on the **first** error encountered during left-to-right processing. It does not accumulate multiple errors.
+### 12.4 Multi-portfolio with per-portfolio error
+
+```
+Given the URL query string is "?equity=AAPL,MSFT&equity=GOOG:0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Invalid character ':' in ticker 'GOOG:0.5' — colons are reserved for v2 weight syntax"
+```
+
+> Note: The parser should reject on the **first** error encountered during left-to-right, portfolio-by-portfolio processing. It does not accumulate multiple errors.
 
 ---
 
@@ -399,28 +499,66 @@ Then the error message includes the offending value or position
 And the error message is a single human-readable sentence
 ```
 
+### 13.3 Multi-portfolio errors include the portfolio number
+
+```
+Given an error occurs in portfolio N (where N > 1)
+Then the error message includes "in portfolio N"
+And the position is relative to that portfolio's token list
+```
+
+---
+
+## 14. v2 Weight Syntax — Explicitly Reserved
+
+v2 will introduce **custom per-ticker weights** using the colon syntax:
+
+```
+?equity=AAPL:0.6,MSFT:0.4
+```
+
+In v1, all of the following are **explicitly rejected**:
+
+| Input pattern         | Rejection reason                                              |
+| --------------------- | ------------------------------------------------------------- |
+| `AAPL:0.5`            | Colon reserved for v2 weight syntax                          |
+| `AAPL%3A0.5`          | URL-encoded colon — same rule applies after decoding         |
+| `AAPL:60,MSFT:40`     | Colon reserved for v2 weight syntax                          |
+| `AAPL=0.5`            | Equals sign reserved                                         |
+
+**v2 design notes (out of scope for v1 implementation):**
+- Weight values will follow the colon: `TICKER:WEIGHT`
+- Weights are decimal fractions (e.g., `0.6`) or integer percents (e.g., `60`)
+- If all tickers have weights, they must sum to 1.0 (or 100%)
+- If no ticker has a weight, v2 falls back to v1 equal-weight behavior
+- Mixed weighted/unweighted tickers within a portfolio are undefined
+
 ---
 
 ## Summary of v1 Constraints
 
-| Rule                        | Limit / Behavior                                     |
-| --------------------------- | ---------------------------------------------------- |
-| Parameter name              | `equity`                                             |
-| Separator                   | `,` (comma)                                          |
-| Max tickers                 | 10                                                   |
-| Max ticker length           | 10 characters                                        |
-| Allowed ticker chars        | Letters (`A-Z`), digits (`0-9`), dot (`.`), hyphen (`-`) |
-| Ticker must start with      | A letter                                             |
-| Case normalization          | All tickers uppercased                               |
-| Whitespace                  | Trimmed per-token; inner whitespace rejected         |
-| Duplicates                  | Rejected (post-normalization)                        |
-| Empty tokens                | Rejected with position                               |
-| Reserved chars (`:`, `=`)   | Rejected with v2 forward-compat message              |
-| Other special chars         | Rejected                                             |
-| Multiple `equity` params    | First wins, warning emitted                          |
-| Unknown params              | Silently ignored                                     |
-| Error strategy              | Fail-fast, first error wins                          |
-| Ordering                    | Input order preserved                                |
+| Rule                           | Limit / Behavior                                     |
+| ------------------------------ | ---------------------------------------------------- |
+| Parameter name                 | `equity`                                             |
+| Canonical meaning              | Each `equity` param = one portfolio                  |
+| Separator (within portfolio)   | `,` (comma)                                          |
+| Max tickers per portfolio      | 20 (`MAX_TICKERS_PER_PORTFOLIO`)                     |
+| Max portfolios                 | 5 (`MAX_PORTFOLIOS`)                                 |
+| Max ticker length              | 10 characters                                        |
+| Allowed ticker chars           | Letters (`A-Z`), digits (`0-9`), dot (`.`), hyphen (`-`) |
+| Ticker must start with         | A letter                                             |
+| Case normalization             | All tickers uppercased                               |
+| Whitespace                     | Trimmed per-token; inner whitespace rejected         |
+| Duplicates (within portfolio)  | Rejected (post-normalization)                        |
+| Duplicates (across portfolios) | Allowed                                              |
+| Empty tokens                   | Rejected with position                               |
+| Reserved chars (`:`, `=`)      | Rejected with v2 forward-compat message              |
+| URL-encoded colon (`%3A`)      | Rejected (decoded before parsing)                    |
+| Other special chars            | Rejected                                             |
+| Unknown params                 | Silently ignored                                     |
+| Error strategy                 | Fail-fast, first error wins                          |
+| Ordering                       | Input order preserved within each portfolio          |
+| Weight model                   | **Equal-weight (1/N) only — v2 reserved**            |
 
 ---
 ---
@@ -475,9 +613,21 @@ Then   the chart includes lines for AAPL, MSFT, Gold, ETH, and USD
   And  the summary groups equities and benchmarks separately
 ```
 
+## A5. Happy path — multi-portfolio comparison
+
+```
+Given  the URL is /?equity=aapl,msft&equity=goog,tsla&benchmark=gold
+When   the page loads
+Then   a performance chart is displayed
+  And  portfolio 1 (AAPL, MSFT) is shown as a single equal-weight line
+  And  portfolio 2 (GOOG, TSLA) is shown as a separate equal-weight line
+  And  the Gold benchmark is shown as a third line
+  And  each line is visually distinguishable
+```
+
 ---
 
-## A5. Explicit time range — range param
+## A6. Explicit time range — range param
 
 ```
 Given  the URL is /?equity=aapl&benchmark=gold&range=5y
@@ -486,7 +636,7 @@ Then   the chart displays 5 years of historical data
   And  the summary reflects 5-year total returns
 ```
 
-## A6. Explicit time range — YTD
+## A7. Explicit time range — YTD
 
 ```
 Given  the URL is /?equity=msft&benchmark=eth&range=ytd
@@ -497,7 +647,7 @@ Then   the chart displays data from January 1 of the current year to today
 
 ---
 
-## A7. Chart assumptions — clearly stated
+## A8. Chart assumptions — clearly stated
 
 ```
 Given  any valid URL with equity and benchmark params
@@ -511,7 +661,7 @@ Then   the chart header or footer displays the assumptions:
 
 ---
 
-## A8. Invalid equity ticker — helpful error
+## A9. Invalid equity ticker — helpful error
 
 ```
 Given  the URL is /?equity=ZZZZZZ&benchmark=gold
@@ -523,7 +673,7 @@ Then   the page displays a clear error message
   And  no chart is rendered
 ```
 
-## A9. Mix of valid and invalid tickers
+## A10. Mix of valid and invalid tickers
 
 ```
 Given  the URL is /?equity=aapl,ZZZZZZ,msft&benchmark=gold
@@ -534,7 +684,7 @@ Then   the page displays an error for the invalid ticker
   And  valid tickers are not partially rendered (fail as a group)
 ```
 
-## A10. Invalid benchmark — unrecognized benchmark name
+## A11. Invalid benchmark — unrecognized benchmark name
 
 ```
 Given  the URL is /?equity=aapl&benchmark=banana
@@ -545,7 +695,7 @@ Then   the page displays a clear error message
   And  no chart is rendered
 ```
 
-## A11. Empty benchmark param
+## A12. Empty benchmark param
 
 ```
 Given  the URL is /?equity=aapl&benchmark=
@@ -554,7 +704,7 @@ Then   the page displays only the equity performance (no benchmark line)
   Or   the page displays an error requesting a benchmark value
 ```
 
-## A12. Missing benchmark param entirely
+## A13. Missing benchmark param entirely
 
 ```
 Given  the URL is /?equity=aapl
@@ -565,7 +715,7 @@ Then   the page displays the equity performance without a benchmark line
 
 ---
 
-## A13. No query params — landing state
+## A14. No query params — landing state
 
 ```
 Given  the URL is / (no query params)
@@ -576,7 +726,7 @@ Then   the page displays a welcome/empty state
   And  example links are provided for the user to click
 ```
 
-## A14. Only benchmark param — no equities
+## A15. Only benchmark param — no equities
 
 ```
 Given  the URL is /?benchmark=gold
@@ -587,7 +737,7 @@ Then   the page displays an error: "equity param is required"
 
 ---
 
-## A15. Auth-free operation — no API key required for basic use
+## A16. Auth-free operation — no API key required for basic use
 
 ```
 Given  the app is started with no environment variables set
@@ -597,7 +747,7 @@ Then   the page loads and displays the chart and summary
   And  no login, API key prompt, or auth wall is shown
 ```
 
-## A16. API key required — clear env var prompt
+## A17. API key required — clear env var prompt
 
 ```
 Given  the app is started without the required MARKET_DATA_API_KEY env var
@@ -609,7 +759,7 @@ Then   the page displays a clear configuration error
   And  no chart is rendered
 ```
 
-## A17. API key present — data loads successfully
+## A18. API key present — data loads successfully
 
 ```
 Given  the app is started with MARKET_DATA_API_KEY=valid_key_here
@@ -618,7 +768,7 @@ Then   the data provider is called with the configured key
   And  the chart and summary render successfully
 ```
 
-## A18. API rate limit or network error
+## A19. API rate limit or network error
 
 ```
 Given  the data provider returns a rate limit error (HTTP 429) or network timeout
@@ -630,7 +780,7 @@ Then   the page displays a clear error: "Data temporarily unavailable. Please tr
 
 ---
 
-## A19. Shareable URL — state fully encoded in query params
+## A20. Shareable URL — state fully encoded in query params
 
 ```
 Given  a user is viewing /?equity=tsmc,aapl,msft&benchmark=gold|eth&range=1y
@@ -640,7 +790,7 @@ Then   the exact same chart and summary are displayed
   And  no server-side session or cookie is required
 ```
 
-## A20. URL update — changing params updates the view
+## A21. URL update — changing params updates the view
 
 ```
 Given  the user is viewing /?equity=aapl&benchmark=gold
@@ -652,7 +802,7 @@ Then   the page re-renders with MSFT vs ETH data
 
 ---
 
-## A21. Summary table content
+## A22. Summary table content
 
 ```
 Given  a valid URL with equities and benchmark
@@ -666,7 +816,7 @@ Then   the summary table includes for each ticker:
   And  the benchmark rows are clearly separated from equity rows
 ```
 
-## A22. Chart interaction — hover/tooltip
+## A23. Chart interaction — hover/tooltip
 
 ```
 Given  a chart is displayed with multiple lines
@@ -677,7 +827,7 @@ Then   a tooltip shows the date and the value for each line at that date
 
 ---
 
-## A23. Mobile responsiveness
+## A24. Mobile responsiveness
 
 ```
 Given  the user opens a valid URL on a mobile device (viewport < 768px)
