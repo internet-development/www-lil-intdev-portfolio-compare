@@ -14,7 +14,7 @@ All application state lives in the URL. Copy and share any URL to reproduce the 
 
 | Parameter   | Required | Format                        | Default | Description                                      |
 | ----------- | -------- | ----------------------------- | ------- | ------------------------------------------------ |
-| `equity`    | Yes      | Comma-separated ticker list   | —       | Up to 10 equity tickers (e.g. `AAPL,MSFT,TSMC`) |
+| `equity`    | Yes      | Comma-separated ticker list   | —       | Up to 20 tickers per portfolio (e.g. `AAPL,MSFT,TSMC`). Repeat for multi-portfolio (max 5). |
 | `benchmark` | No       | Pipe-separated benchmark list | —       | One or more benchmarks: `gold`, `eth`, `usd`     |
 | `range`     | No       | Time range code               | `1y`    | `1m`, `3m`, `6m`, `ytd`, `1y`, `3y`, `5y`, `max` |
 
@@ -49,6 +49,13 @@ All application state lives in the URL. Copy and share any URL to reproduce the 
 ```
 /?equity=AAPL,GOOG
 ```
+
+**Multi-portfolio comparison:**
+```
+/?equity=AAPL,MSFT&equity=GOOG,TSLA&benchmark=gold
+```
+
+See [SCENARIOS.md](./SCENARIOS.md) for the full v1 query contract, validation rules, and error semantics.
 
 ### Benchmarks
 
