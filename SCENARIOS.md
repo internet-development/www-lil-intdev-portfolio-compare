@@ -580,11 +580,20 @@ In v1, all of the following are **explicitly rejected**:
 | `AAPL%3D0.5`          | URL-encoded equals — same rule applies after decoding        |
 
 **v2 design notes (out of scope for v1 implementation):**
-- Weight values will follow the colon: `TICKER:WEIGHT`
-- Weights are decimal fractions (e.g., `0.6`) or integer percents (e.g., `60`)
-- If all tickers have weights, they must sum to 1.0 (or 100%)
-- If no ticker has a weight, v2 falls back to v1 equal-weight behavior
-- Mixed weighted/unweighted tickers within a portfolio are undefined
+
+> The full v2 weights contract — including token grammar, validation rules, error messages, and rebalancing semantics — is specified in [`docs/weights-v2.md`](./docs/weights-v2.md). The summary below captures the key decisions.
+
+- **Syntax:** Weight values follow the colon: `TICKER:WEIGHT` (e.g., `AAPL:0.6` or `AAPL:60%`)
+- **Format:** Both decimal fractions (`0.6`) and explicit percent (`60%`) are accepted. Bare integers > 1 without `%` are rejected as ambiguous (e.g., `AAPL:60` → error; use `AAPL:60%` or `AAPL:0.6`)
+- **Sum constraint:** All weights in a portfolio must sum to 1.0 (±0.01 tolerance for rounding)
+- **No negatives:** Negative weights (short positions) are rejected
+- **No zeros:** Zero-weight tickers are rejected — remove the ticker instead
+- **No duplicates:** Same as v1 — duplicate tickers within a portfolio are rejected
+- **No mixing:** Mixed weighted/unweighted tickers within a portfolio are rejected (all or nothing)
+- **Equal-weight fallback:** If no ticker has a weight, v2 falls back to v1 equal-weight (1/N) behavior — full backward compatibility
+- **Per-portfolio independence:** One portfolio can be weighted while another is equal-weight
+- **Rebalancing:** Not in v2. Weights represent initial allocation; portfolio drifts with price changes (buy-and-hold). Rebalancing is deferred to v3 with a `rebalance=` param
+- **Precision:** Max 4 decimal places per weight
 
 ---
 
