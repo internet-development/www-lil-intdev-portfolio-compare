@@ -1,0 +1,136 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.gridLine {
+  stroke: var(--theme-border);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.axisLine {
+  stroke: var(--theme-text);
+  stroke-width: 1;
+}
+
+.zeroLine {
+  stroke: var(--theme-text);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  opacity: 0.5;
+}
+
+.axisLabel {
+  fill: var(--theme-text);
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+}
+
+.seriesLine {
+  fill: none;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.seriesBenchmark {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2ch;
+  padding-top: calc(var(--theme-line-height-base) * 0.5rem);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  white-space: nowrap;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 2ch;
+  height: 2px;
+}
+
+.legendSwatchDashed {
+  display: inline-block;
+  width: 2ch;
+  height: 0;
+  border-top: 2px dashed;
+}
+
+.legendLabel {
+  font-size: var(--font-size);
+}
+
+.assumptions {
+  padding-top: calc(var(--theme-line-height-base) * 0.5rem);
+  font-size: var(--font-size);
+  opacity: 0.6;
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--theme-background);
+  border: 2px solid var(--theme-text);
+  padding: calc(var(--theme-line-height-base) * 0.25rem) 1ch;
+  font-size: var(--font-size);
+  font-family: var(--font-family-mono);
+  z-index: 2;
+  white-space: nowrap;
+}
+
+.tooltipDate {
+  font-weight: 400;
+  padding-bottom: calc(var(--theme-line-height-base) * 0.25rem);
+}
+
+.tooltipRow {
+  display: flex;
+  gap: 1ch;
+  align-items: center;
+}
+
+.tooltipSwatch {
+  display: inline-block;
+  width: 1ch;
+  height: 2px;
+  flex-shrink: 0;
+}
+
+.crosshair {
+  stroke: var(--theme-text);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  opacity: 0.4;
+}
+
+.hitArea {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  font-size: var(--font-size);
+  opacity: 0.6;
+}

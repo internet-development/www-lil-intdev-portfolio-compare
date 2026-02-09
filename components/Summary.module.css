@@ -1,0 +1,83 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.table {
+  border: 0;
+  outline: 0;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  border-spacing: 0px;
+}
+
+.thead {
+}
+
+.tbody {
+}
+
+.headerRow {
+  font-weight: 400;
+}
+
+.headerCell {
+  border: 0;
+  outline: 0;
+  padding-right: 1ch;
+  padding-bottom: calc(var(--theme-line-height-base) * 0.25rem);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.row {
+  transition: background-color 0.5s ease;
+}
+
+.row:focus {
+  background: var(--theme-focused-foreground);
+  outline: 0;
+}
+
+.cell {
+  border: 0;
+  outline: 0;
+  padding-right: 1ch;
+  white-space: nowrap;
+}
+
+.dividerRow {
+}
+
+.dividerCell {
+  padding: 0;
+  border: 0;
+  outline: 0;
+}
+
+.dividerLine {
+  border: 0;
+  border-top: 1px solid var(--theme-border);
+  margin: calc(var(--theme-line-height-base) * 0.25rem) 0;
+}
+
+.positive {
+  color: var(--color-neon-green-70, #39FF14);
+}
+
+.negative {
+  color: var(--color-red-50, #EF4444);
+}
+
+.neutral {
+  opacity: 0.6;
+}
+
+.sectionLabel {
+  padding-top: calc(var(--theme-line-height-base) * 0.5rem);
+  padding-bottom: calc(var(--theme-line-height-base) * 0.25rem);
+  font-weight: 400;
+  opacity: 0.6;
+}
