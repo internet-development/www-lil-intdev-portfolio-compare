@@ -8,6 +8,30 @@ These define the **v1 acceptance contract** — any behavior not listed here is 
 > **URL format (single portfolio):** `?equity=TICKER,TICKER,...`
 > **URL format (multi-portfolio):** `?equity=TICKER,TICKER,...&equity=TICKER,TICKER,...`
 
+### Canonical parameter name
+
+The user-facing query parameter for specifying equities is **`equity`** (singular). This was chosen over alternatives (`portfolios`, `tickers`, `stocks`) for consistency with the codebase and URL brevity. The API route internally uses `tickers` (see LIL-INTDEV-AGENTS.md §3.1), but the client-side parser reads `equity` from the browser URL.
+
+### Validation pipeline order
+
+When the parser processes the `equity` param(s), checks run in this order per portfolio, and the **first failure stops all processing** (fail-fast):
+
+1. **Portfolio count** — reject if `> MAX_PORTFOLIOS` (5)
+2. **Empty value** — reject if an `equity=` param has an empty string value
+3. **Split on comma** — tokenize the value
+4. **Per-token, left to right:**
+   a. **Trim whitespace** (leading/trailing)
+   b. **Empty token** — reject if token is empty after trim
+   c. **Reserved characters** — reject if token contains `:` or `=` (v2-reserved)
+   d. **Illegal characters** — reject if token contains chars outside `[A-Za-z0-9.\-]`
+   e. **Must start with letter** — reject if first char is not `[A-Za-z]`
+   f. **Max length** — reject if token length > `MAX_TICKER_LENGTH` (10)
+   g. **Uppercase** — normalize to uppercase
+   h. **Duplicate check** — reject if ticker already seen in this portfolio (post-normalization)
+5. **Ticker count** — reject if portfolio has `> MAX_TICKERS_PER_PORTFOLIO` (20)
+
+Portfolios are processed left to right (first `equity=` param is portfolio 1, etc.). Processing halts on the first error across all portfolios.
+
 ---
 
 ## 1. Happy Path — Valid Input
@@ -228,9 +252,9 @@ Then an error is returned with message: "Empty ticker at position 1"
 
 ---
 
-## 7. Reserved Syntax Rejection (v2 Weight Syntax)
+## 7. Reserved Syntax Rejection (`:` and `=` — v2 Weight Syntax)
 
-v1 is **strictly equal-weight**. The colon character (`:`) is reserved for v2 weight syntax (e.g. `equity=AAPL:0.6,MSFT:0.4`). Any occurrence of `:` — literal or URL-encoded — must be rejected with a message that explains it is reserved for v2.
+v1 is **strictly equal-weight**. The colon (`:`) and equals (`=`) characters are reserved for v2 weight syntax (e.g. `equity=AAPL:0.6,MSFT:0.4`). Any occurrence of `:` or `=` inside a ticker token — literal or URL-encoded (`%3A`, `%3D`) — must be rejected with a message that explains it is reserved.
 
 ### 7.1 Colon inside a token is rejected
 
@@ -257,6 +281,16 @@ Given the URL query string is "?equity=AAPL=0.5"
 When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character '=' in ticker 'AAPL=0.5' — equals signs are reserved"
 ```
+
+### 7.3a URL-encoded equals (%3D) inside a token is rejected
+
+```
+Given the URL query string is "?equity=AAPL%3D0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Invalid character '=' in ticker 'AAPL=0.5' — equals signs are reserved"
+```
+
+> **Implementation note:** Same as colon — URL decoding happens before parsing, so `%3D` becomes `=` and is caught by the same rule.
 
 ### 7.4 Colon in one of multiple tokens
 
@@ -312,7 +346,23 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character ' ' in ticker 'AA PL'"
 ```
 
-### 8.4 Ticker exceeding max length (10 chars) is rejected
+### 8.4 Ticker with hash is rejected
+
+```
+Given the URL query string is "?equity=AAPL#B"
+When the v1 query parser processes the input
+Then an error is returned with message: "Invalid character '#' in ticker 'AAPL#B'"
+```
+
+### 8.5 Ticker with at-sign is rejected
+
+```
+Given the URL query string is "?equity=@AAPL"
+When the v1 query parser processes the input
+Then an error is returned with message: "Invalid character '@' in ticker '@AAPL'"
+```
+
+### 8.6 Ticker exceeding max length (10 chars) is rejected
 
 ```
 Given the URL query string is "?equity=ABCDEFGHIJK"
@@ -320,7 +370,7 @@ When the v1 query parser processes the input
 Then an error is returned with message: "Ticker too long: 'ABCDEFGHIJK' exceeds 10 character limit"
 ```
 
-### 8.5 Valid ticker with dot (e.g., BRK.B)
+### 8.7 Valid ticker with dot (e.g., BRK.B)
 
 ```
 Given the URL query string is "?equity=BRK.B"
@@ -329,7 +379,7 @@ Then portfolio 1 contains ["BRK.B"]
 And no error is returned
 ```
 
-### 8.6 Valid ticker with hyphen (e.g., BF-B)
+### 8.8 Valid ticker with hyphen (e.g., BF-B)
 
 ```
 Given the URL query string is "?equity=BF-B"
@@ -527,6 +577,7 @@ In v1, all of the following are **explicitly rejected**:
 | `AAPL%3A0.5`          | URL-encoded colon — same rule applies after decoding         |
 | `AAPL:60,MSFT:40`     | Colon reserved for v2 weight syntax                          |
 | `AAPL=0.5`            | Equals sign reserved                                         |
+| `AAPL%3D0.5`          | URL-encoded equals — same rule applies after decoding        |
 
 **v2 design notes (out of scope for v1 implementation):**
 - Weight values will follow the colon: `TICKER:WEIGHT`
@@ -555,10 +606,10 @@ In v1, all of the following are **explicitly rejected**:
 | Duplicates (across portfolios) | Allowed                                              |
 | Empty tokens                   | Rejected with position                               |
 | Reserved chars (`:`, `=`)      | Rejected with v2 forward-compat message              |
-| URL-encoded colon (`%3A`)      | Rejected (decoded before parsing)                    |
+| URL-encoded reserved (`%3A`, `%3D`) | Rejected (decoded before parsing)               |
 | Other special chars            | Rejected                                             |
 | Unknown params                 | Silently ignored                                     |
-| Error strategy                 | Fail-fast, first error wins                          |
+| Error strategy                 | Fail-fast, first error wins (see validation pipeline order above) |
 | Ordering                       | Input order preserved within each portfolio          |
 | Weight model                   | **Equal-weight (1/N) only — v2 reserved**            |
 
