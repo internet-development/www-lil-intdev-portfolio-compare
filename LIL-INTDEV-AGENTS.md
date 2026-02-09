@@ -1,6 +1,8 @@
 # LIL-INTDEV Agent Guidelines
 
-Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web app that accepts `?equity=TSMC,AAPL,MSFT&benchmark=gold|eth|usd` and displays comparable performance over time.
+Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web app that accepts `?equity=TSMC,AAPL,MSFT&benchmark=gold|eth|usd` and displays comparable equity-vs-benchmark performance over time.
+
+**Repo purpose:** Compare equity portfolio performance against commodity and crypto benchmarks (gold, ETH, USD cash). All state lives in the URL — no accounts, no sessions. See [`README.md`](./README.md) for the public-facing overview.
 
 ---
 
@@ -36,6 +38,17 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 - **Client-side query parsing, server-side data fetching.** The parser runs in the browser so the page can show validation errors instantly. Actual market data is fetched through a Next.js API route to keep API keys server-side.
 - **Minimal dependencies.** This repo follows the Internet Development Studio convention of keeping `package.json` as small as possible. Do not add libraries unless absolutely necessary.
 
+### v1 Constraints
+
+These constraints define v1 and **must not be violated** without a new version bump:
+
+| Constraint | Detail | Origin |
+| --- | --- | --- |
+| **Auth-free** | The app works without login, API keys, or any auth wall for the end user. Server-side keys for data providers are invisible to visitors. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5), scenario A15 |
+| **Equal-weight only** | Every equity in `equity=` gets weight 1/N. There is no syntax for custom weights in v1. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5) |
+| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. This reserves the syntax for the v2 weighted-portfolio feature. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
+| **`=` is also reserved** | Same treatment as `:`. | Scenario 7.2 |
+
 ---
 
 ## 2. Stack
@@ -62,28 +75,48 @@ The source of truth for all URL and query-parameter parsing behavior is [`SCENAR
 - **When adding or changing parser behavior**, update `SCENARIOS.md` first, then update tests to match. Tests must cover every scenario listed in the document.
 - **When tests fail**, check `SCENARIOS.md` to determine whether the test or the implementation is wrong. The scenarios file is the contract — implementation follows it, not the other way around.
 
+### 3.1 Query parameter names
+
+| Param | User-facing URL | API route internal param | Separator | Notes |
+| --- | --- | --- | --- | --- |
+| Equities | `equity=AAPL,MSFT` | `tickers=AAPL,MSFT` (in `/api/market-data`) | `,` (comma) | Client parser validates `equity=`, then forwards as `tickers=` to the API route |
+| Benchmarks | `benchmark=gold\|eth` | `benchmarks=gold\|eth` (in `/api/benchmark`) | `\|` (pipe) | Benchmark names are case-insensitive |
+| Time range | `range=1y` | `range=1y` | — | Same name on both sides. Defaults to `1y` |
+
+> **Note:** The user-facing param is `equity` (singular) and `benchmark` (singular). The API routes accept `tickers` and `benchmarks` (plural). The client-side parser (not yet implemented — see §7) is responsible for this translation. This mapping is stable for v1.
+
+### 3.2 Parser location
+
+The client-side query parser will live at `common/parser.ts` (not yet created — see §7). It is responsible for:
+
+1. Reading `equity=`, `benchmark=`, and `range=` from the browser URL
+2. Validating inputs per SCENARIOS.md sections 1–13
+3. Returning either a parsed result or a fail-fast error
+4. Translating param names before calling the API routes
+
 ---
 
 ## 4. Data Fetching Approach
 
 ### 4.1 API route pattern
 
-Create Next.js Route Handlers under `app/api/` to proxy external market data requests. This keeps API keys off the client and gives us a place to add caching.
+Next.js Route Handlers under `app/api/` proxy external market data requests. This keeps API keys off the client and gives us a place to add caching.
 
 ```
-app/api/market-data/route.ts   — equity price history
-app/api/benchmark/route.ts     — gold, ETH, USD price history
+app/api/market-data/route.ts   — equity price history  (accepts ?tickers=AAPL,MSFT&range=1y)
+app/api/benchmark/route.ts     — benchmark price history (accepts ?benchmarks=gold|eth&range=1y)
 ```
+
+Both routes are implemented and use Yahoo Finance as the data provider. The USD benchmark is generated as a synthetic flat-line baseline (close = 1 for every date in range).
 
 ### 4.2 Free-tier-first for MVP
 
-The MVP must work without a paid API key wherever possible (scenario A15). Prefer providers that offer free-tier access for historical price data. If a key is required, fail gracefully with a clear env-var message (scenario A16).
+The MVP must work without a paid API key wherever possible (scenario A15). If a key is required, fail gracefully with a clear env-var message (scenario A16).
 
-Candidate free/freemium data sources (evaluate in order of preference):
+**Current provider:** Yahoo Finance (unofficial v8 chart endpoint) — no API key required. Covers equities, gold (`GC=F`), and ETH (`ETH-USD`). If Yahoo becomes unavailable, evaluate in this order:
 
-1. **Yahoo Finance** (unofficial endpoints) — no key required, covers equities and some commodities
-2. **Alpha Vantage** — free tier with 25 requests/day (key required but free to obtain)
-3. **CoinGecko** — free tier for crypto (ETH), no key required for basic access
+1. **Alpha Vantage** — free tier with 25 requests/day (key required but free to obtain)
+2. **CoinGecko** — free tier for crypto (ETH), no key required for basic access
 
 ### 4.3 Data shape
 
@@ -143,9 +176,9 @@ Do **not** add Redis, an in-memory LRU, or any external cache for MVP. Keep it s
 
 ---
 
-## 7. Directory Structure (target)
+## 7. Directory Structure
 
-Files marked ✓ already exist. Files marked ○ need to be created.
+Files marked ✓ exist. Files marked ○ need to be created.
 
 ```
 app/
@@ -156,8 +189,8 @@ app/
   robots.ts                ✓ robots config
   sitemap.ts               ✓ sitemap config
   api/
-    market-data/route.ts   ○ proxies equity price requests
-    benchmark/route.ts     ○ proxies benchmark price requests
+    market-data/route.ts   ✓ proxies equity price requests (Yahoo Finance)
+    benchmark/route.ts     ✓ proxies benchmark price requests (Yahoo Finance + USD baseline)
 common/
   constants.ts             ✓ app-wide constants (API URLs, limits)
   utilities.ts             ✓ utility functions
@@ -165,8 +198,9 @@ common/
   queries.ts               ✓ data-fetching helpers
   server.ts                ✓ server-side utilities
   position.ts              ✓ position utilities
-  parser.ts                ○ v1 query parser (equity, benchmark, range)
-  types.ts                 ○ shared TypeScript interfaces (PricePoint, SeriesData)
+  market-data.ts           ✓ normalization helpers (normalizeSeries, normalizeAllSeries)
+  types.ts                 ✓ shared TypeScript interfaces (PricePoint, SeriesData, RangeValue, BenchmarkValue)
+  parser.ts                ○ v1 query parser (equity, benchmark, range) — see §3.2
 components/
   Chart.tsx                ○ performance chart component
   Chart.module.css         ○
@@ -237,3 +271,35 @@ Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARI
 - **All returns in USD.** Benchmark prices are spot prices in USD. Equity prices are closing prices in USD.
 - **Test coverage.** Every scenario in SCENARIOS.md must have a corresponding test. Do not merge code that breaks existing scenario tests.
 - **Commit hygiene.** Each PR should address one task. Reference the task number in the commit message.
+
+---
+
+## 13. Running the App
+
+```sh
+npm install
+npm run dev          # → http://localhost:10000
+npm run build        # production build
+npm run lint         # next lint
+```
+
+### 13.1 Tests
+
+**No test runner is configured yet.** `package.json` has no `test` script and no testing libraries (Jest, Vitest, etc.) are installed.
+
+When a test runner is added:
+- Parser tests should live next to the parser (e.g. `common/parser.test.ts`).
+- Every scenario in `SCENARIOS.md` sections 1–13 must have a corresponding unit test.
+- End-to-end scenarios (A1–A23) should have integration or e2e tests as the UI is built out.
+
+### 13.2 Entrypoints
+
+| What | File | Notes |
+| --- | --- | --- |
+| Main page | `app/page.tsx` | Currently SRCL kitchen sink; will become compare page |
+| Root layout | `app/layout.tsx` | Providers wrapper, `theme-light` body class |
+| Equity data API | `app/api/market-data/route.ts` | GET `?tickers=…&range=…` |
+| Benchmark data API | `app/api/benchmark/route.ts` | GET `?benchmarks=…&range=…` |
+| Shared types | `common/types.ts` | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue` |
+| Normalization | `common/market-data.ts` | `normalizeSeries()`, `normalizeAllSeries()` |
+| Parser (planned) | `common/parser.ts` | Not yet created — see §3.2 |
