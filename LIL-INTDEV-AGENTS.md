@@ -246,11 +246,13 @@ Place new files in the pattern above. Reuse existing SRCL components (Card, Tabl
 
 The repo is a fork of the **SRCL** component library (sacred.computer). Key things to know:
 
-- **`app/page.tsx`** is the portfolio compare page. It uses `useCompareQuery()` to parse URL params client-side, displays validation errors via `AlertBanner`, and renders a `PortfolioSummary` card showing parsed tickers with weights. Data fetching and chart rendering are not yet wired into this component.
+- **`app/page.tsx`** is the portfolio compare page (`'use client'`). It uses `useCompareQuery()` (a custom hook that calls `parseCompareQuery(searchParams)` on mount) to parse URL params client-side. On error it renders an `AlertBanner`; on success it renders an inline `PortfolioSummary` card showing parsed tickers with equal weights, benchmarks, and range. **Data fetching and chart rendering are not yet wired into this component** — the page does not call `/api/market-data` or `/api/benchmark`.
+- **`useCompareQuery()`** returns `{ query: CompareQuery | null, error: string | null }`. The `CompareQuery` contains `portfolios: WeightedPortfolio[]`, `benchmarks: BenchmarkValue[]`, and `range: RangeValue` — all the info needed to build API fetch URLs.
 - **`app/concept-1/` and `app/concept-2/`** are alternative layout demos. Leave them in place — they don't interfere with the compare page.
 - **`app/layout.tsx`** wraps everything in `<Providers>` with `className="theme-light"`. Do not modify the root layout unless necessary.
 - **`next.config.js`** is minimal (`devIndicators: false`). No special configuration needed for API routes.
 - **`components/page/DefaultLayout.tsx`** and **`components/page/DefaultActionBar.tsx`** provide the standard page shell. Consider reusing `DefaultLayout` for the compare page.
+- **No domain-specific UI components exist yet.** `Chart.tsx`, `Summary.tsx`, `ErrorState.tsx`, and `LandingState.tsx` are all still to be created (see §7). All current UI is built from generic SRCL primitives (`Card`, `AlertBanner`, `DataTable`, `BlockLoader`, etc.).
 
 ---
 
@@ -321,6 +323,137 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 2. Wire `app/page.tsx` to fetch from `/api/market-data` and `/api/benchmark` using the parsed query
 3. Pass fetched + normalized data to `Chart` and a `Summary` table component
 4. Add loading, error, and empty states
+
+---
+
+## 11.3 Compare View Dataflow — Intended Wiring
+
+> This section describes the end-to-end data flow for the compare page. Use it as the blueprint when wiring UI to data routes. Each numbered step maps to a file; PRs should touch as few steps as possible.
+
+### Dataflow diagram
+
+```
+ URL in browser address bar
+ /?equity=AAPL,MSFT&benchmark=gold&range=1y
+              │
+              ▼
+ ┌─────────────────────────────────────────────┐
+ │ 1. PARSE (client)                           │
+ │    common/query.ts  → parseCompareQuery()   │
+ │    common/parser.ts → parsePortfolios()     │
+ │    common/portfolio.ts → buildEqualWeight…() │
+ │                                             │
+ │    Output: CompareQuery {                   │
+ │      portfolios: WeightedPortfolio[]        │
+ │      benchmarks: BenchmarkValue[]           │
+ │      range: RangeValue                      │
+ │    }                                        │
+ └───────────────┬─────────────────────────────┘
+                 │ on success
+                 ▼
+ ┌─────────────────────────────────────────────┐
+ │ 2. FETCH (client → server → Yahoo Finance)  │
+ │                                             │
+ │  For each portfolio:                        │
+ │    GET /api/market-data                     │
+ │      ?tickers=AAPL,MSFT&range=1y            │
+ │    → { series: SeriesData[] }               │
+ │                                             │
+ │  If benchmarks present:                     │
+ │    GET /api/benchmark                       │
+ │      ?benchmarks=gold&range=1y              │
+ │    → { series: SeriesData[] }               │
+ │                                             │
+ │  Key files:                                 │
+ │    app/api/market-data/route.ts             │
+ │    app/api/benchmark/route.ts               │
+ └───────────────┬─────────────────────────────┘
+                 │ SeriesData[] for each series
+                 ▼
+ ┌─────────────────────────────────────────────┐
+ │ 3. COMPUTE (client)                         │
+ │                                             │
+ │  a. Normalize each series to % change:      │
+ │     common/market-data.ts                   │
+ │       → normalizeSeries(series)             │
+ │       → normalizeAllSeries(allSeries)       │
+ │     Output: NormalizedSeries[]              │
+ │       { ticker, points: [{date, value}] }   │
+ │                                             │
+ │  b. Compute portfolio-level returns:        │
+ │     common/portfolio.ts                     │
+ │       → computePortfolioReturn(returns, wt) │
+ │     Aggregates per-ticker % into one line   │
+ │     per portfolio using 1/N weights.        │
+ │                                             │
+ │  c. Align dates across all series:          │
+ │     normalizeAllSeries() keeps only dates   │
+ │     present in ALL series.                  │
+ └───────────────┬─────────────────────────────┘
+                 │ NormalizedSeries[] (aligned)
+                 ▼
+ ┌─────────────────────────────────────────────┐
+ │ 4. RENDER (client)                          │
+ │                                             │
+ │  a. Chart — line chart of normalized series │
+ │     components/Chart.tsx  (to be created)   │
+ │     <svg> or <canvas>, one line per series  │
+ │     X-axis: date, Y-axis: % change         │
+ │     Benchmarks dashed, equities solid       │
+ │                                             │
+ │  b. Summary — tabular performance stats     │
+ │     components/Summary.tsx (to be created)  │
+ │     Per-ticker: start price, end price,     │
+ │     total return %, annualized return %     │
+ │                                             │
+ │  c. States:                                 │
+ │     Loading  → BlockLoader / skeleton       │
+ │     Error    → AlertBanner (fetch failures) │
+ │     Empty    → LandingState (no query)      │
+ └─────────────────────────────────────────────┘
+```
+
+### File map — who owns what
+
+Each file below is tagged with its pipeline stage. When making changes, limit PRs to one stage at a time to keep diffs small and reviewable.
+
+| Stage | File | Exists | Role |
+| --- | --- | --- | --- |
+| **Parse** | `common/parser.ts` | ✓ | Strict v1 equity parser (token validation, reserved-char rejection) |
+| **Parse** | `common/query.ts` | ✓ | Entry point: `parseCompareQuery(searchParams) → QueryResult` |
+| **Parse** | `common/portfolio.ts` | ✓ | `buildEqualWeightPortfolio()`, `computePortfolioReturn()` |
+| **Parse** | `common/types.ts` | ✓ | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue` |
+| **Fetch** | `app/api/market-data/route.ts` | ✓ | `GET ?tickers=…&range=…` → `{ series: SeriesData[] }`. Yahoo Finance, 1h cache. |
+| **Fetch** | `app/api/benchmark/route.ts` | ✓ | `GET ?benchmarks=…&range=…` → `{ series: SeriesData[] }`. Gold/ETH via Yahoo; USD = synthetic flat baseline. |
+| **Fetch** | `app/api/compare/validate/route.ts` | ✓ | Server-side validation only (optional pre-check before fetching data). |
+| **Compute** | `common/market-data.ts` | ✓ | `normalizeSeries()`, `normalizeAllSeries()`, `isValidRange()`, `isValidBenchmark()`. Also exports `NormalizedPoint`, `NormalizedSeries` types. |
+| **Compute** | `common/portfolio.ts` | ✓ | `computePortfolioReturn()` — weighted sum of per-ticker returns |
+| **Render** | `app/page.tsx` | ✓ | Compare page — currently parse-only, needs fetch + compute + render wiring |
+| **Render** | `components/Chart.tsx` | ○ | Line chart (normalized % change vs time) |
+| **Render** | `components/Chart.module.css` | ○ | Chart styles |
+| **Render** | `components/Summary.tsx` | ○ | Performance summary table |
+| **Render** | `components/Summary.module.css` | ○ | Summary styles |
+| **Render** | `components/ErrorState.tsx` | ○ | Fetch-error display (distinct from parse-error `AlertBanner`) |
+| **Render** | `components/LandingState.tsx` | ○ | Empty/welcome state when no query params (scenario A14) |
+
+### Param translation — client URL to API route
+
+The client-side parser reads user-facing param names; the API routes accept different names. The wiring layer in `app/page.tsx` must translate:
+
+| User URL param | API route param | Translation |
+| --- | --- | --- |
+| `equity=AAPL,MSFT` | `tickers=AAPL,MSFT` | Rename `equity` → `tickers`; value unchanged |
+| `benchmark=gold\|eth` | `benchmarks=gold\|eth` | Rename `benchmark` → `benchmarks`; value unchanged |
+| `range=1y` | `range=1y` | Same name, pass through |
+
+### Wiring checklist for `app/page.tsx`
+
+When connecting the parse → fetch → compute → render pipeline, the page component needs:
+
+1. **Parse** — already done (`useCompareQuery()` returns `CompareQuery`)
+2. **Fetch** — call `/api/market-data` and `/api/benchmark` using the parsed query. Use `useEffect` or a data-fetching hook. Handle loading, error, and success states.
+3. **Compute** — pass raw `SeriesData[]` through `normalizeAllSeries()` and `computePortfolioReturn()` to produce chart-ready data.
+4. **Render** — pass `NormalizedSeries[]` to `Chart.tsx`; pass raw + computed data to `Summary.tsx`. Show `LandingState` when no query, `AlertBanner` on parse error, `ErrorState` on fetch error, and `BlockLoader` while loading.
 
 ---
 
