@@ -969,3 +969,178 @@ Then   the response is 200 with JSON body { series: [...] }
 - Range values are **case-insensitive**
 - Invalid range values produce a clear error listing valid options
 - If omitted, defaults to `1y`
+
+---
+---
+
+# End-to-End Compare View — UI Wiring Scenarios
+
+The scenarios below cover the full compare page experience once the UI is wired to the data routes: parse → fetch → compute → render. They define loading, success, error, and edge-case states for a human tester running the app locally at `http://localhost:10000`.
+
+---
+
+## B1. Success — valid query fetches data and renders chart
+
+```
+Given  the URL is /?equity=AAPL,MSFT&benchmark=gold&range=1y
+When   the page loads and the query is parsed without error
+Then   the page fetches data from /api/market-data?tickers=AAPL,MSFT&range=1y
+  And  the page fetches data from /api/benchmark?benchmarks=gold&range=1y
+  And  the fetched series are normalized to % change from start date
+  And  a line chart is rendered with one line per ticker (AAPL, MSFT) and one for Gold
+  And  a summary section is displayed with return data for each series
+```
+
+## B2. Success — equities only, no benchmark
+
+```
+Given  the URL is /?equity=AAPL,MSFT&range=1y
+When   the page loads
+Then   the page fetches data from /api/market-data?tickers=AAPL,MSFT&range=1y
+  And  no call is made to /api/benchmark
+  And  the chart renders lines for AAPL and MSFT only
+  And  the summary shows returns for equities only
+```
+
+## B3. Success — multi-portfolio with benchmark
+
+```
+Given  the URL is /?equity=AAPL,MSFT&equity=GOOG,TSLA&benchmark=eth&range=1y
+When   the page loads
+Then   the page fetches data for both portfolios and the benchmark
+  And  the chart shows an equal-weight composite line for each portfolio plus the ETH benchmark
+  And  each line is visually distinguishable
+```
+
+---
+
+## B4. Loading — spinner/skeleton visible while fetching
+
+```
+Given  the URL is /?equity=AAPL,MSFT&benchmark=gold&range=1y
+When   the page has parsed the query but data fetch is still in progress
+Then   a loading indicator (spinner, skeleton, or BlockLoader) is visible in the chart area
+  And  no empty or broken chart is shown
+  And  the loading indicator disappears once data arrives
+```
+
+## B5. Loading — summary area shows loading state
+
+```
+Given  the URL is /?equity=AAPL,MSFT&benchmark=gold&range=1y
+When   the data fetch is in progress
+Then   the summary area shows a loading state or is hidden
+  And  no stale or placeholder data is displayed
+```
+
+---
+
+## B6. Fetch error — network failure shows error state
+
+```
+Given  the URL is /?equity=AAPL,MSFT&benchmark=gold&range=1y
+  And  the /api/market-data endpoint returns a network error or HTTP 500
+When   the page attempts to load data
+Then   the page displays a clear error message (e.g. "Failed to fetch market data")
+  And  no empty chart is rendered (no silent failure)
+  And  the parsed portfolio summary may still be visible for context
+```
+
+## B7. Fetch error — benchmark fetch fails
+
+```
+Given  the URL is /?equity=AAPL&benchmark=gold&range=1y
+  And  the /api/benchmark endpoint returns an error
+When   the page attempts to load data
+Then   the page displays a clear error message about the benchmark failure
+  And  no chart is rendered with partial data (equity only without the requested benchmark)
+```
+
+## B8. Fetch error — rate limit (HTTP 429)
+
+```
+Given  the URL is /?equity=AAPL&benchmark=gold
+  And  the data provider returns HTTP 429 (rate limited)
+When   the page attempts to load data
+Then   the page displays an error: "Data temporarily unavailable. Please try again."
+  And  no partial chart is shown
+```
+
+---
+
+## B9. Invalid query — no fetch occurs, validation message appears
+
+```
+Given  the URL is /?equity=AAPL:0.5&benchmark=gold
+When   the page loads
+Then   the client-side parser rejects the query with a validation error
+  And  no fetch is made to /api/market-data or /api/benchmark
+  And  the error banner shows: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
+  And  no loading indicator is shown
+```
+
+## B10. Invalid query — empty equity param, no fetch
+
+```
+Given  the URL is /?equity=&benchmark=gold
+When   the page loads
+Then   the parser returns an error: "Empty equity parameter"
+  And  no fetch is made to any API route
+  And  the error banner is displayed
+```
+
+## B11. No query params — landing state, no fetch
+
+```
+Given  the URL is / (no query params)
+When   the page loads
+Then   the page shows a welcome/landing state
+  And  no fetch is made to any API route
+  And  the landing state explains the URL format with example links
+```
+
+---
+
+## B12. Partial data — ticker has no data from provider
+
+```
+Given  the URL is /?equity=AAPL,ZZZZZZ&benchmark=gold&range=1y
+  And  the data provider returns data for AAPL but no data for ZZZZZZ
+When   the page loads
+Then   the page displays an error: "No data found for ticker: ZZZZZZ"
+  And  no chart is rendered (the entire request fails, not partial render)
+```
+
+## B13. Partial data — benchmark series is empty
+
+```
+Given  the URL is /?equity=AAPL&benchmark=gold&range=1y
+  And  the /api/benchmark endpoint returns an empty series for gold (no data points)
+When   the page loads
+Then   the page displays a clear message that benchmark data is unavailable
+  And  no chart is rendered with a missing benchmark line
+```
+
+## B14. Partial data — date range mismatch across series
+
+```
+Given  the URL is /?equity=AAPL,MSFT&benchmark=gold&range=5y
+  And  one series has fewer data points than the others (e.g. MSFT IPO'd more recently)
+When   the page loads
+Then   the chart renders using the overlapping date range common to all series
+  And  the normalization aligns all series to the common start date
+  Or   the page communicates that date ranges differ and shows available data
+```
+
+---
+
+## B15. URL change triggers re-fetch
+
+```
+Given  the user is viewing /?equity=AAPL&benchmark=gold&range=1y
+When   they change the URL to /?equity=MSFT&benchmark=eth&range=3y and press Enter
+Then   the page re-parses the new query
+  And  a loading indicator appears while new data is fetched
+  And  the chart and summary update with the new data
+  And  no stale data from the previous query is visible
+```
