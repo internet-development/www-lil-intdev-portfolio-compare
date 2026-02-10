@@ -1,0 +1,79 @@
+.chart {
+  position: relative;
+  width: 100%;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.axisLabel {
+  font-size: 10px;
+  fill: var(--theme-text);
+  font-family: inherit;
+}
+
+.axisLine {
+  stroke: var(--theme-border);
+  stroke-width: 1;
+}
+
+.gridLine {
+  stroke: var(--theme-border);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 4;
+}
+
+.zeroLine {
+  stroke: var(--theme-text);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  opacity: 0.4;
+}
+
+.seriesLine {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.seriesDashed {
+  stroke-dasharray: 6 3;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2ch;
+  padding-top: calc(var(--theme-line-height-base) * 0.5rem);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 2ch;
+  height: 2px;
+}
+
+.legendSwatchDashed {
+  border-top: 2px dashed;
+  height: 0;
+}
+
+.legendLabel {
+  font-size: var(--font-size);
+  color: var(--theme-text);
+}
+
+.attribution {
+  padding-top: 4px;
+  font-size: 10px;
+  opacity: 0.5;
+  color: var(--theme-text);
+}
