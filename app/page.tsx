@@ -6,11 +6,15 @@ import '@root/global.css';
 import * as React from 'react';
 
 import AlertBanner from '@components/AlertBanner';
+import BlockLoader from '@components/BlockLoader';
 import Card from '@components/Card';
 import DefaultLayout from '@components/page/DefaultLayout';
 
 import { parseCompareQuery } from '@common/query';
 import type { CompareQuery } from '@common/query';
+import { fetchCompareData } from '@common/compare-fetcher';
+import type { CompareDataSuccess } from '@common/compare-fetcher';
+import type { SeriesData } from '@common/types';
 
 function useCompareQuery(): { query: CompareQuery | null; error: string | null } {
   const [query, setQuery] = React.useState<CompareQuery | null>(null);
@@ -32,7 +36,50 @@ function useCompareQuery(): { query: CompareQuery | null; error: string | null }
   return { query, error };
 }
 
-function PortfolioSummary({ query }: { query: CompareQuery }) {
+type FetchState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; error: string }
+  | { status: 'success'; data: CompareDataSuccess };
+
+function useCompareData(query: CompareQuery | null): FetchState {
+  const [state, setState] = React.useState<FetchState>({ status: 'idle' });
+
+  React.useEffect(() => {
+    if (!query) {
+      setState({ status: 'idle' });
+      return;
+    }
+
+    const hasTickers = query.portfolios.some((p) => p.tickers.length > 0);
+    if (!hasTickers && query.benchmarks.length === 0) {
+      setState({ status: 'idle' });
+      return;
+    }
+
+    let cancelled = false;
+
+    setState({ status: 'loading' });
+
+    fetchCompareData(query).then((result) => {
+      if (cancelled) return;
+
+      if (result.ok) {
+        setState({ status: 'success', data: result });
+      } else {
+        setState({ status: 'error', error: result.error });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  return state;
+}
+
+function PortfolioSummary({ query, allSeries }: { query: CompareQuery; allSeries?: SeriesData[] }) {
   if (query.portfolios.length === 0) {
     return (
       <Card title="PORTFOLIO COMPARE">
@@ -62,24 +109,43 @@ function PortfolioSummary({ query }: { query: CompareQuery }) {
           <strong>Benchmarks:</strong> {query.benchmarks.join(', ').toUpperCase()}
         </div>
       )}
-      <div>
+      <div style={{ marginBottom: allSeries ? 8 : 0 }}>
         <strong>Range:</strong> {query.range}
       </div>
+      {allSeries && allSeries.length > 0 && (
+        <div style={{ marginTop: 8, opacity: 0.5, fontSize: '0.85em' }}>
+          <strong>Data loaded:</strong> {allSeries.map((s) => s.ticker).join(', ')} — Source: {allSeries[0].source}
+        </div>
+      )}
     </Card>
   );
 }
 
 export default function Page() {
-  const { query, error } = useCompareQuery();
+  const { query, error: parseError } = useCompareQuery();
+  const fetchState = useCompareData(query);
+
+  const allSeries: SeriesData[] | undefined =
+    fetchState.status === 'success' ? [...fetchState.data.equitySeries, ...fetchState.data.benchmarkSeries] : undefined;
 
   return (
     <DefaultLayout previewPixelSRC="https://intdev-global.s3.us-west-2.amazonaws.com/template-app-icon.png">
-      {error && (
+      {parseError && (
         <AlertBanner>
-          <strong>Invalid query:</strong> {error}
+          <strong>Invalid query:</strong> {parseError}
         </AlertBanner>
       )}
-      {query && <PortfolioSummary query={query} />}
+      {fetchState.status === 'error' && (
+        <AlertBanner>
+          <strong>Fetch error:</strong> {fetchState.error}
+        </AlertBanner>
+      )}
+      {fetchState.status === 'loading' && (
+        <Card title="LOADING">
+          <BlockLoader mode={1} /> Fetching market data…
+        </Card>
+      )}
+      {query && <PortfolioSummary query={query} allSeries={allSeries} />}
     </DefaultLayout>
   );
 }
