@@ -61,7 +61,7 @@ These constraints define v1 and **must not be violated** without a new version b
 | --- | --- | --- |
 | **Auth-free** | The app works without login, API keys, or any auth wall for the end user. Server-side keys for data providers are invisible to visitors. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5), scenario A16 |
 | **Equal-weight only** | Every equity in `equity=` gets weight 1/N. There is no syntax for custom weights in v1. | Issue [#5](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/5) |
-| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. **Do not silently accept, strip, or ignore colons.** This reserves the syntax for the v2 weighted-portfolio feature. See SCENARIOS.md §7 and §14. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
+| **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. **Do not silently accept, strip, or ignore colons.** This reserves the syntax for the v2 weighted-portfolio feature. See SCENARIOS.md §7 and §14, and [`docs/weights-v2.md`](./docs/weights-v2.md) for the full v2 contract. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
 | **`=` is also reserved** | Same treatment as `:`. Reject with a clear message, never silently accept. | Scenario 7.3 |
 
 ---
@@ -274,6 +274,21 @@ Each SOUL (agent) owns a vertical slice. Coordinate through this doc and SCENARI
 3. Use existing SRCL primitives (Card, Grid, Row, Table, etc.) for layout.
 4. Wire it into `app/page.tsx` or the relevant page.
 5. Ensure mobile responsiveness (scenario A23) — viewport < 768px must remain usable.
+
+---
+
+## 11.1 v2 Weights — Reserved, Not Implemented
+
+The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Key references:
+
+| Document | What it covers |
+| --- | --- |
+| [`docs/weights-v2.md`](./docs/weights-v2.md) | Full v2 contract: token grammar, validation rules, error messages, rebalancing semantics, open questions |
+| [`SCENARIOS.md` §14](./SCENARIOS.md) | Summary of v2 decisions + v1 rejection table |
+| [`SCENARIOS.md` §7](./SCENARIOS.md) | v1 tests that enforce `:` and `=` rejection |
+| [`common/parser.ts`](./common/parser.ts) | v1 implementation — rejects `:` with v2-reserved message |
+
+**For agents:** Do not implement v2 weight parsing. The v1 parser must continue to reject `:` with the message `"colons are reserved for v2 weight syntax"`. When v2 implementation begins, start from `docs/weights-v2.md` as the contract.
 
 ---
 
