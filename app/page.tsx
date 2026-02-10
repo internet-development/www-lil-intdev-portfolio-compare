@@ -8,12 +8,14 @@ import * as React from 'react';
 import AlertBanner from '@components/AlertBanner';
 import BlockLoader from '@components/BlockLoader';
 import Card from '@components/Card';
+import Chart from '@components/Chart';
 import DefaultLayout from '@components/page/DefaultLayout';
 
 import { parseCompareQuery } from '@common/query';
 import type { CompareQuery } from '@common/query';
 import { fetchCompareData } from '@common/compare-fetcher';
 import type { CompareDataSuccess } from '@common/compare-fetcher';
+import { normalizeAllSeries } from '@common/market-data';
 import type { SeriesData } from '@common/types';
 
 function useCompareQuery(): { query: CompareQuery | null; error: string | null } {
@@ -21,16 +23,23 @@ function useCompareQuery(): { query: CompareQuery | null; error: string | null }
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const result = parseCompareQuery(searchParams);
+    function parse() {
+      const searchParams = new URLSearchParams(window.location.search);
+      const result = parseCompareQuery(searchParams);
 
-    if (result.ok) {
-      setQuery(result.query);
-      setError(null);
-    } else {
-      setQuery(null);
-      setError(result.error);
+      if (result.ok) {
+        setQuery(result.query);
+        setError(null);
+      } else {
+        setQuery(null);
+        setError(result.error);
+      }
     }
+
+    parse();
+
+    window.addEventListener('popstate', parse);
+    return () => window.removeEventListener('popstate', parse);
   }, []);
 
   return { query, error };
@@ -128,6 +137,16 @@ export default function Page() {
   const allSeries: SeriesData[] | undefined =
     fetchState.status === 'success' ? [...fetchState.data.equitySeries, ...fetchState.data.benchmarkSeries] : undefined;
 
+  const normalizedSeries = React.useMemo(() => {
+    if (!allSeries || allSeries.length === 0) return [];
+    return normalizeAllSeries(allSeries);
+  }, [allSeries]);
+
+  const benchmarkTickers = React.useMemo(() => {
+    if (fetchState.status !== 'success') return [];
+    return fetchState.data.benchmarkSeries.map((s) => s.ticker);
+  }, [fetchState]);
+
   return (
     <DefaultLayout previewPixelSRC="https://intdev-global.s3.us-west-2.amazonaws.com/template-app-icon.png">
       {parseError && (
@@ -146,6 +165,11 @@ export default function Page() {
         </Card>
       )}
       {query && <PortfolioSummary query={query} allSeries={allSeries} />}
+      {normalizedSeries.length > 0 && (
+        <Card title="PERFORMANCE">
+          <Chart series={normalizedSeries} benchmarkTickers={benchmarkTickers} />
+        </Card>
+      )}
     </DefaultLayout>
   );
 }
