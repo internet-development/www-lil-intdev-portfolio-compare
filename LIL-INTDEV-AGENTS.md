@@ -17,7 +17,7 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 | **`:` is reserved** | A colon inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** with a clear v2-reserved message. Never silently accept it. |
 | **`=` is reserved** | Same treatment as `:`. |
 
-The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A24 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
+The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A27 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
 
 ---
 
@@ -86,7 +86,7 @@ These constraints define v1 and **must not be violated** without a new version b
 The source of truth for all URL and query-parameter parsing behavior is [`SCENARIOS.md`](./SCENARIOS.md).
 
 - **v1 acceptance contract** — `SCENARIOS.md` sections 1–13 define every valid and invalid input for the `equity=` query parser. Any behavior not listed there is undefined and must be rejected.
-- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A23 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
+- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A27 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
 - **When adding or changing parser behavior**, update `SCENARIOS.md` first, then update tests to match. Tests must cover every scenario listed in the document.
 - **When tests fail**, check `SCENARIOS.md` to determine whether the test or the implementation is wrong. The scenarios file is the contract — implementation follows it, not the other way around.
 
@@ -102,7 +102,7 @@ The source of truth for all URL and query-parameter parsing behavior is [`SCENAR
 
 ### 3.2 Parser location
 
-The client-side query parser will live at `common/parser.ts` (not yet created — see §7). It is responsible for:
+The client-side query parser lives at `common/parser.ts`. It is responsible for:
 
 1. Reading `equity=`, `benchmark=`, and `range=` from the browser URL
 2. Validating inputs per SCENARIOS.md sections 1–13
@@ -132,6 +132,16 @@ The MVP must work without a paid API key wherever possible (scenario A15). If a 
 
 1. **Alpha Vantage** — free tier with 25 requests/day (key required but free to obtain)
 2. **CoinGecko** — free tier for crypto (ETH), no key required for basic access
+
+### 4.2.1 Yahoo Finance constraints (discovered)
+
+| Constraint | Detail |
+| --- | --- |
+| **Rate limit** | ~2,000 requests/day per IP (undocumented, observed). Individual ticker fetches are sequential in the API route, so a portfolio of N tickers = N requests. |
+| **No API key** | The v8 chart endpoint does not require authentication. A `User-Agent` header is sent to avoid bot-detection blocks. |
+| **Date range mapping** | Ranges ≥ 3y use weekly intervals; `max` uses monthly. This reduces data points but is sufficient for trend comparison. |
+| **Null data points** | Some trading days have `null` closes (holidays, halts). These are silently skipped during parsing — no gap-fill is applied. |
+| **Ticker validation** | Yahoo does not return a clean 404 for unknown tickers — behavior varies. The API route catches this and surfaces `"No data found for ticker: X"`. |
 
 ### 4.3 Data shape
 
@@ -215,7 +225,9 @@ common/
   position.ts              ✓ position utilities
   market-data.ts           ✓ normalization helpers (normalizeSeries, normalizeAllSeries)
   types.ts                 ✓ shared TypeScript interfaces (PricePoint, SeriesData, RangeValue, BenchmarkValue)
-  parser.ts                ○ v1 query parser (equity, benchmark, range) — see §3.2
+  parser.ts                ✓ v1 strict equity parser (see §3.2, tested in parser.test.ts)
+  query.ts                 ✓ full query entry point: equity + benchmark + range parsing
+  portfolio.ts             ✓ equal-weight portfolio construction (1/N weights)
 components/
   Chart.tsx                ○ performance chart component
   Chart.module.css         ○
@@ -234,7 +246,7 @@ Place new files in the pattern above. Reuse existing SRCL components (Card, Tabl
 
 The repo is a fork of the **SRCL** component library (sacred.computer). Key things to know:
 
-- **`app/page.tsx`** is currently a kitchen-sink demo of all SRCL components with `export const dynamic = 'force-static'`. The Page Integration SOUL will replace this content with the portfolio compare UI. Remove `force-static` since the compare page reads query params at request time.
+- **`app/page.tsx`** is the portfolio compare page. It uses `useCompareQuery()` to parse URL params client-side, displays validation errors via `AlertBanner`, and renders a `PortfolioSummary` card showing parsed tickers with weights. Data fetching and chart rendering are not yet wired into this component.
 - **`app/concept-1/` and `app/concept-2/`** are alternative layout demos. Leave them in place — they don't interfere with the compare page.
 - **`app/layout.tsx`** wraps everything in `<Providers>` with `className="theme-light"`. Do not modify the root layout unless necessary.
 - **`next.config.js`** is minimal (`devIndicators: false`). No special configuration needed for API routes.
@@ -292,6 +304,26 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 
 ---
 
+## 11.2 v1 Pipeline Status
+
+> Updated after task 7 end-to-end sanity check.
+
+| Stage | Status | Key files | Notes |
+| --- | --- | --- | --- |
+| **Parse** | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` | 98 unit tests passing (Vitest). Covers SCENARIOS.md §1–§13. |
+| **Fetch** | Done | `app/api/market-data/route.ts`, `app/api/benchmark/route.ts` | Yahoo Finance (free, no key). 1-hour cache. See §4.2.1 for constraints. |
+| **Compute** | Done | `common/market-data.ts`, `common/portfolio.ts` | Normalization to % change + equal-weight return computation. |
+| **Render** | Not started | `app/page.tsx` (summary only) | Page shows parsed portfolio card. Chart component (`Chart.tsx`) and data-fetch wiring not yet implemented. |
+| **Validate API** | Done | `app/api/compare/validate/route.ts` | Server-side query validation endpoint. |
+
+**Next steps for the render layer:**
+1. Create `Chart.tsx` — render normalized series as `<svg>` or `<canvas>` line chart
+2. Wire `app/page.tsx` to fetch from `/api/market-data` and `/api/benchmark` using the parsed query
+3. Pass fetched + normalized data to `Chart` and a `Summary` table component
+4. Add loading, error, and empty states
+
+---
+
 ## 12. Guardrails
 
 - **No paid keys required for MVP.** If every free option is exhausted, document the cheapest path and make it optional.
@@ -326,22 +358,35 @@ Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold` to verify the app
 
 ### 13.2 Tests
 
-**No test runner is configured yet.** `package.json` has no `test` script and no testing libraries (Jest, Vitest, etc.) are installed.
+**Test runner:** Vitest 4.x (configured in `vitest.config.ts`). Run with:
 
-When a test runner is added:
-- Parser tests should live next to the parser (e.g. `common/parser.test.ts`).
-- Every scenario in `SCENARIOS.md` sections 1–13 must have a corresponding unit test.
-- End-to-end scenarios (A1–A24) should have integration or e2e tests as the UI is built out.
-- Run tests with `npm test` (once configured).
+```sh
+npm test              # single run
+npm run test:watch    # watch mode
+```
+
+**Current test coverage (98 tests passing):**
+
+| Test file | Tests | Covers |
+| --- | --- | --- |
+| `common/parser.test.ts` | 62 | SCENARIOS.md §1–§13 (all v1 parser scenarios) |
+| `common/query.test.ts` | 16 | Full query parsing: equity + benchmark + range |
+| `common/portfolio.test.ts` | 11 | Equal-weight construction + weighted return computation |
+| `app/api/compare/validate/route.test.ts` | 9 | Server-side validation endpoint |
+
+- Every scenario in `SCENARIOS.md` sections 1–13 has a corresponding unit test.
+- End-to-end scenarios (A1–A27) should have integration or e2e tests as the UI is built out.
 
 ### 13.3 Entrypoints
 
 | What | File | Notes |
 | --- | --- | --- |
-| Main page | `app/page.tsx` | Currently SRCL kitchen sink; will become compare page |
+| Main page | `app/page.tsx` | Compare page — parses URL, shows portfolio summary card |
 | Root layout | `app/layout.tsx` | Providers wrapper, `theme-light` body class |
 | Equity data API | `app/api/market-data/route.ts` | GET `?tickers=…&range=…` |
 | Benchmark data API | `app/api/benchmark/route.ts` | GET `?benchmarks=…&range=…` |
 | Shared types | `common/types.ts` | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue` |
 | Normalization | `common/market-data.ts` | `normalizeSeries()`, `normalizeAllSeries()` |
-| Parser (planned) | `common/parser.ts` | Not yet created — see §3.2 |
+| Equity parser | `common/parser.ts` | Strict v1 parser — see §3.2 |
+| Query entry point | `common/query.ts` | Full URL parsing (equity + benchmark + range) |
+| Portfolio weights | `common/portfolio.ts` | Equal-weight (1/N) portfolio construction |
