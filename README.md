@@ -57,6 +57,17 @@ All application state lives in the URL. Copy and share any URL to reproduce the 
 
 See [SCENARIOS.md](./SCENARIOS.md) for the full v1 query contract, validation rules, and error semantics.
 
+### Query Parsing
+
+All URL query parameters are parsed client-side through a single entry point (`common/query.ts → parseCompareQuery`). The parsing flow:
+
+1. **`equity=`** is validated by the strict v1 parser (`common/parser.ts`). Invalid input (reserved `:` or `=` characters, illegal characters, duplicates, etc.) is rejected with a descriptive error message displayed in-page via an `AlertBanner`.
+2. **Equal-weight construction:** For a parsed portfolio of N tickers, each ticker is assigned explicit weight **1/N** (`common/portfolio.ts`). There is no implicit weighting — every portfolio carries an explicit `WeightedPortfolio` with per-ticker weights that sum to 1.
+3. **`benchmark=`** is validated against the known benchmark list (`gold`, `eth`, `usd`).
+4. **`range=`** defaults to `1y` and is validated against the known range list.
+
+The API validation endpoint (`GET /api/compare/validate`) also uses the same parser and returns `400` with an error message for invalid queries.
+
 ### Benchmarks
 
 | Value  | Description                              |
