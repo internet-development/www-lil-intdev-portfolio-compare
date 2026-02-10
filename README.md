@@ -96,7 +96,7 @@ After starting the dev server, paste this URL in your browser to verify the end-
 http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y
 ```
 
-**What you should see (v1 current state):** The page parses the URL, validates the query, and displays a portfolio summary card showing each ticker with its equal weight (50.0% each), the benchmark (GOLD), and the range (1y). Invalid queries show an inline error banner. Chart and data-fetching visualization are not yet wired into the page — the API routes (`/api/market-data`, `/api/benchmark`) work independently and return JSON.
+**What you should see:** The page parses the URL, fetches market data from the API routes, and renders a performance chart showing normalized % change over time for each equity and benchmark. A portfolio summary card displays each ticker with its equal weight (50.0% each), the benchmark (GOLD), the range (1y), and data source attribution. Invalid queries show an inline error banner. A loading indicator appears while data is being fetched.
 
 **More examples to try:**
 
@@ -159,7 +159,17 @@ The app works without a paid API key when using free-tier data providers.
 | **Parse** (URL → validated query) | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` — 98 unit tests passing |
 | **Fetch** (API routes → market data) | Done | `/api/market-data` and `/api/benchmark` return JSON via Yahoo Finance (free, no key) |
 | **Compute** (normalize + weight) | Done | `common/market-data.ts` normalizes to % change; `common/portfolio.ts` computes 1/N weights |
-| **Render** (chart + summary) | Not started | `app/page.tsx` shows parsed portfolio summary card; chart component not yet created |
+| **Render** (chart + summary) | Done | `app/page.tsx` wires parse → fetch → compute → render; `Chart.tsx` renders normalized % change line chart |
+
+## Known v1 Limitations
+
+- **Equal-weight only.** Custom per-ticker weights are not supported. The `:` and `=` characters in ticker tokens are reserved for v2 and will produce an error.
+- **Yahoo Finance data source.** Data is fetched from an unofficial Yahoo Finance endpoint (no API key required). Rate limits (~2,000 requests/day per IP) and occasional null data points (holidays, halts) apply. Null closes are silently skipped — no gap-fill is applied.
+- **Server-side 1-hour cache.** API route responses are cached for 1 hour (`revalidate: 3600`). Data may lag up to 1 hour behind real-time prices.
+- **No client-side caching.** Changing the URL re-fetches all data. There is no client-side cache or deduplication across navigations.
+- **Date alignment.** When series have different trading calendars, only dates present in all series are shown. Some data points may be dropped at the edges.
+- **No hover tooltips or interactive chart features.** The v1 chart is a static SVG line chart without hover, zoom, or tooltip interactions.
+- **No summary table.** The v1 render layer includes a portfolio summary card and chart but does not yet include a detailed summary table with per-ticker start/end prices and annualized returns.
 
 ## Contact
 
