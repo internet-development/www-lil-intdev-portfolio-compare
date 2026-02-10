@@ -899,6 +899,45 @@ Then   the chart scales to fit the viewport width
   And  all text remains legible
 ```
 
+## A25. Paste URL and see parsed portfolio (v1 sanity check)
+
+> This is the minimal end-to-end scenario for v1. It verifies the parse → display loop works. Chart rendering (fetch → compute → render) is covered by A1–A5 and will be testable once the Chart component is implemented.
+
+```
+Given  the user pastes http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y into the browser
+When   the page loads
+Then   the URL is parsed without error
+  And  a portfolio summary card is displayed showing:
+       - AAPL (50.0%) and MSFT (50.0%) with "equal weight (1/2)" label
+       - Benchmark: GOLD
+       - Range: 1y
+  And  no error banner is displayed
+```
+
+## A26. Paste URL with invalid query and see error
+
+```
+Given  the user pastes http://localhost:10000/?equity=AAPL:0.5 into the browser
+When   the page loads
+Then   an error banner is displayed with the message:
+       "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
+  And  no portfolio summary is displayed
+```
+
+## A27. API routes return market data independently
+
+> Verifies the fetch layer works even though the page doesn't yet wire data into the UI.
+
+```
+Given  the dev server is running on port 10000
+When   a GET request is made to /api/market-data?tickers=AAPL,MSFT&range=1y
+Then   the response is 200 with JSON body { series: [...] }
+  And  each series entry has ticker, points (date/close pairs), and source fields
+When   a GET request is made to /api/benchmark?benchmarks=gold|eth&range=1y
+Then   the response is 200 with JSON body { series: [...] }
+  And  Gold and ETH series are returned with price data
+```
+
 ---
 
 ## Benchmark parameter contract

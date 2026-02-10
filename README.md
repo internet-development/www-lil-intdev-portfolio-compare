@@ -88,6 +88,26 @@ Benchmark names are case-insensitive. Combine multiple with pipe: `benchmark=gol
 - **Benchmark spot prices.** Gold and ETH use spot prices in USD. USD benchmark is a flat 0% return line representing cash.
 - **No currency conversion.** All values are in USD. Non-USD-denominated equities use their USD-listed price.
 
+## Try It
+
+After starting the dev server, paste this URL in your browser to verify the end-to-end flow:
+
+```
+http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y
+```
+
+**What you should see (v1 current state):** The page parses the URL, validates the query, and displays a portfolio summary card showing each ticker with its equal weight (50.0% each), the benchmark (GOLD), and the range (1y). Invalid queries show an inline error banner. Chart and data-fetching visualization are not yet wired into the page — the API routes (`/api/market-data`, `/api/benchmark`) work independently and return JSON.
+
+**More examples to try:**
+
+| URL | What it tests |
+| --- | --- |
+| `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y` | Two equities vs gold, 1-year |
+| `http://localhost:10000/?equity=TSMC,AAPL,MSFT&benchmark=gold\|eth\|usd` | Three equities vs all benchmarks |
+| `http://localhost:10000/?equity=AAPL,MSFT&equity=GOOG,TSLA&benchmark=gold` | Multi-portfolio comparison |
+| `http://localhost:10000/?equity=AAPL:0.5` | Reserved v2 syntax — should show error |
+| `http://localhost:10000/` | Landing state — empty, shows example URL |
+
 ## Setup
 
 ```sh
@@ -131,6 +151,15 @@ The app works without a paid API key when using free-tier data providers.
 | UI          | React 19, CSS Modules |
 | Components  | SRCL                  |
 | Hosting     | Vercel                |
+
+## v1 Pipeline Status
+
+| Stage | Status | Notes |
+| --- | --- | --- |
+| **Parse** (URL → validated query) | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` — 98 unit tests passing |
+| **Fetch** (API routes → market data) | Done | `/api/market-data` and `/api/benchmark` return JSON via Yahoo Finance (free, no key) |
+| **Compute** (normalize + weight) | Done | `common/market-data.ts` normalizes to % change; `common/portfolio.ts` computes 1/N weights |
+| **Render** (chart + summary) | Not started | `app/page.tsx` shows parsed portfolio summary card; chart component not yet created |
 
 ## Contact
 
