@@ -17,7 +17,7 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 | **`:` is reserved** | A colon inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** with a clear v2-reserved message. Never silently accept it. |
 | **`=` is reserved** | Same treatment as `:`. |
 
-The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A27 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
+The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A29 for end-to-end behavior, B1–B15 for UI wiring scenarios. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
 
 ---
 
@@ -110,7 +110,7 @@ Before submitting any PR, run through the verification loop to confirm nothing i
 The source of truth for all URL and query-parameter parsing behavior is [`SCENARIOS.md`](./SCENARIOS.md).
 
 - **v1 acceptance contract** — `SCENARIOS.md` sections 1–13 define every valid and invalid input for the `equity=` query parser. Any behavior not listed there is undefined and must be rejected.
-- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A27 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
+- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A29 and B1–B15 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
 - **When adding or changing parser behavior**, update `SCENARIOS.md` first, then update tests to match. Tests must cover every scenario listed in the document.
 - **When tests fail**, check `SCENARIOS.md` to determine whether the test or the implementation is wrong. The scenarios file is the contract — implementation follows it, not the other way around.
 
@@ -121,8 +121,9 @@ The source of truth for all URL and query-parameter parsing behavior is [`SCENAR
 | Equities | `equity=AAPL,MSFT` | `tickers=AAPL,MSFT` (in `/api/market-data`) | `,` (comma) | Client parser validates `equity=`, then forwards as `tickers=` to the API route |
 | Benchmarks | `benchmark=gold\|eth` | `benchmarks=gold\|eth` (in `/api/benchmark`) | `\|` (pipe) | Benchmark names are case-insensitive |
 | Time range | `range=1y` | `range=1y` | — | Same name on both sides. Defaults to `1y` |
+| Amount | `amount=10000` | — (client-side only) | — | Simulated lump-sum investment at start date. Defaults to `10000`. Must be a positive number. |
 
-> **Note:** The user-facing param is `equity` (singular) and `benchmark` (singular). The API routes accept `tickers` and `benchmarks` (plural). The client-side parser (not yet implemented — see §7) is responsible for this translation. This mapping is stable for v1.
+> **Note:** The user-facing param is `equity` (singular) and `benchmark` (singular). The API routes accept `tickers` and `benchmarks` (plural). The client-side parser (`common/query.ts`) handles this translation. This mapping is stable for v1.
 
 ### 3.2 Parser location
 
@@ -227,7 +228,7 @@ Do **not** add Redis, an in-memory LRU, or any external cache for MVP. Keep it s
 
 ## 7. Directory Structure
 
-Files marked ✓ exist. Files marked ○ need to be created.
+All files are implemented (✓).
 
 ```
 app/
@@ -417,19 +418,19 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
  │ 4. RENDER (client)                          │
  │                                             │
  │  a. Chart — line chart of normalized series │
- │     components/Chart.tsx  (to be created)   │
- │     <svg> or <canvas>, one line per series  │
+ │     components/Chart.tsx  (implemented)     │
+ │     <svg>, one line per series              │
  │     X-axis: date, Y-axis: % change         │
  │     Benchmarks dashed, equities solid       │
  │                                             │
  │  b. Summary — tabular performance stats     │
- │     components/Summary.tsx (to be created)  │
+ │     components/Summary.tsx (implemented)    │
  │     Per-ticker: start price, end price,     │
- │     total return %, annualized return %     │
+ │     total return %, dollar value            │
  │                                             │
  │  c. States:                                 │
- │     Loading  → BlockLoader / skeleton       │
- │     Error    → AlertBanner (fetch failures) │
+ │     Loading  → BlockLoader                  │
+ │     Error    → ErrorState (parse + fetch)   │
  │     Empty    → LandingState (no query)      │
  └─────────────────────────────────────────────┘
 ```
@@ -530,7 +531,7 @@ npm run test:watch    # watch mode
 | `app/api/compare/validate/route.test.ts` | 9 | Server-side validation endpoint |
 
 - Every scenario in `SCENARIOS.md` sections 1–13 has a corresponding unit test.
-- End-to-end scenarios (A1–A27) should have integration or e2e tests as the UI is built out.
+- End-to-end scenarios (A1–A29, B1–B15) should have integration or e2e tests as the UI is built out.
 
 ### 13.3 Entrypoints
 
@@ -564,24 +565,24 @@ npm run test:watch    # watch mode
 - [x] **§11.3 File map — `Chart.tsx` and `Chart.module.css` listed as `○`.** Updated to `✓`.
 - [x] **§11.3 File map — `common/compare-fetcher.ts` not listed.** Added to Fetch stage with `✓`.
 
-### SCENARIOS.md — No Structural Drift (Minor Gaps)
+### SCENARIOS.md — Resolved
 
-- [ ] **A-section / B-section scenario status tracking.** The doc does not indicate which end-to-end scenarios are currently testable vs. aspirational. Consider adding a "status" column or annotation (e.g., A1-A5 chart rendering: implemented; A22 summary table: not yet; A23 hover tooltips: not yet; B1-B15: mostly implemented).
+- [x] **A-section / B-section scenario status tracking.** The [Scenario Implementation Status](./SCENARIOS.md#scenario-implementation-status) table now tracks which scenarios are implemented, partial, or not yet testable.
 
-### README.md — Mostly Current
+### README.md — Current
 
-- [ ] **README is accurate.** The "v1 Pipeline Status" table, "Try It" section, and "Known v1 Limitations" all match the current codebase. No changes required.
+- [x] **README is accurate.** The "v1 Pipeline Status" table, "Try It" section, and "Known v1 Limitations" all match the current codebase. No changes required.
 
-### package.json — Cosmetic Drift
+### package.json — Resolved
 
-- [ ] **`name` field is `"srcl"`.** The repo is `www-lil-intdev-portfolio-compare`, but the package name still reflects the original SRCL template. Consider updating to `"www-lil-intdev-portfolio-compare"` or similar.
-- [ ] **`description` field describes SRCL.** The description says "SRCL is an open-source React component and style repository…" which no longer matches the app's purpose. Consider updating to describe the portfolio compare tool.
+- [x] **`name` field updated** to `"www-lil-intdev-portfolio-compare"`.
+- [x] **`description` field updated** to describe the portfolio compare tool.
 
 ### Summary
 
 | Area | Severity | Items |
 | --- | --- | --- |
 | **LIL-INTDEV-AGENTS.md** — §7, §8, §11.2, §11.3 | ~~High~~ Fixed | 9 items — all resolved by Task 3 |
-| **SCENARIOS.md** | Low | 1 item — no status tracking on implemented vs. aspirational scenarios |
+| **SCENARIOS.md** | ~~Low~~ Fixed | Status tracking table added |
 | **README.md** | None | Accurate — no changes needed |
-| **package.json** | Low | 2 items — cosmetic name/description from SRCL template |
+| **package.json** | ~~Low~~ Fixed | Name and description updated |
