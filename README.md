@@ -7,7 +7,7 @@ Compare equity portfolio performance against commodity and crypto benchmarks. Bu
 | Document | Purpose |
 | --- | --- |
 | [LIL-INTDEV-AGENTS.md](./LIL-INTDEV-AGENTS.md) | Agent and contributor guidelines — architecture, stack, data flow, directory structure, and v1 constraints |
-| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A27, B1–B15), and the verification checklist |
+| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A27, B1–B15), and the [canonical verification checklist](./SCENARIOS.md#local-verification-checklist) |
 
 Start here if you are a new collaborator or agent.
 
@@ -99,6 +99,8 @@ Benchmark names are case-insensitive. Combine multiple with pipe: `benchmark=gol
 
 ## Try It
 
+> **Canonical source:** The full verification procedure lives in [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist). This section is a quick-start summary.
+
 After starting the dev server, paste this URL in your browser to verify the end-to-end flow:
 
 ```
@@ -122,7 +124,7 @@ http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y
 After setup, run through these three checks to confirm the app is working:
 
 - [ ] **Happy path (A25):** Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y` — you should see a portfolio summary card and a performance chart with solid lines for AAPL/MSFT and a dashed line for Gold.
-- [ ] **Invalid input (A26):** Open `http://localhost:10000/?equity=AAPL:0.5` — you should see an error banner: *"colons are reserved for v2 weight syntax"*. No chart renders.
+- [ ] **Invalid input (A26):** Open `http://localhost:10000/?equity=AAPL:0.5` — you should see an error banner containing *"colons are reserved for v2 weight syntax"*. No chart renders.
 - [ ] **Unit tests:** Run `npm test` — all 98 tests should pass (parser, query, portfolio, validation endpoint).
 
 > **Authoritative source:** The full verification procedure — including curl-based API tests, validation endpoint checks, and additional browser scenarios — lives in [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist). The checklist above is a quick-reference summary; when in doubt, follow SCENARIOS.md.
