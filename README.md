@@ -2,6 +2,15 @@
 
 Compare equity portfolio performance against commodity and crypto benchmarks. Built with [SRCL](https://sacred.computer) terminal aesthetics.
 
+## Canonical Docs
+
+| Document | Purpose |
+| --- | --- |
+| [LIL-INTDEV-AGENTS.md](./LIL-INTDEV-AGENTS.md) | Agent and contributor guidelines — architecture, stack, data flow, directory structure, and v1 constraints |
+| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A27, B1–B15), and the verification checklist |
+
+Start here if you are a new collaborator or agent.
+
 ## URL Format
 
 ```
@@ -107,6 +116,16 @@ http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y
 | `http://localhost:10000/?equity=AAPL,MSFT&equity=GOOG,TSLA&benchmark=gold` | Multi-portfolio comparison |
 | `http://localhost:10000/?equity=AAPL:0.5` | Reserved v2 syntax — should show error |
 | `http://localhost:10000/` | Landing state — empty, shows example URL |
+
+### Quick Verification Checklist
+
+After setup, run through these three checks to confirm the app is working (mirrors [SCENARIOS.md](./SCENARIOS.md)):
+
+- [ ] **Happy path (A25):** Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y` — you should see a portfolio summary card and a performance chart with solid lines for AAPL/MSFT and a dashed line for Gold.
+- [ ] **Invalid input (A26):** Open `http://localhost:10000/?equity=AAPL:0.5` — you should see an error banner: *"colons are reserved for v2 weight syntax"*. No chart renders.
+- [ ] **Unit tests:** Run `npm test` — all 98 tests should pass (parser, query, portfolio, validation endpoint).
+
+See [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md) for the full step-by-step verification procedure.
 
 ## Setup
 
