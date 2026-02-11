@@ -119,13 +119,13 @@ http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y
 
 ### Quick Verification Checklist
 
-After setup, run through these three checks to confirm the app is working (mirrors [SCENARIOS.md](./SCENARIOS.md#local-verification-checklist)):
+After setup, run through these three checks to confirm the app is working:
 
 - [ ] **Happy path (A25):** Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y` — you should see a portfolio summary card and a performance chart with solid lines for AAPL/MSFT and a dashed line for Gold.
 - [ ] **Invalid input (A26):** Open `http://localhost:10000/?equity=AAPL:0.5` — you should see an error banner: *"colons are reserved for v2 weight syntax"*. No chart renders.
 - [ ] **Unit tests:** Run `npm test` — all 98 tests should pass (parser, query, portfolio, validation endpoint).
 
-See [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist) for the full step-by-step verification procedure.
+> **Authoritative source:** The full verification procedure — including curl-based API tests, validation endpoint checks, and additional browser scenarios — lives in [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist). The checklist above is a quick-reference summary; when in doubt, follow SCENARIOS.md.
 
 ## Setup
 

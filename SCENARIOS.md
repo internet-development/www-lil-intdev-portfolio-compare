@@ -1351,6 +1351,8 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 
 # Local Verification Checklist
 
+> **This is the canonical "Try it" procedure.** README's [Quick Verification Checklist](./README.md#quick-verification-checklist) is a 3-item summary that points here. If the two ever diverge, this checklist is authoritative.
+
 Run these steps to verify the v1 pipeline end-to-end:
 
 ```sh
