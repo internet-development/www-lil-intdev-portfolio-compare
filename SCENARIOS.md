@@ -629,7 +629,7 @@ In v1, all of the following are **explicitly rejected**:
 
 The scenarios below cover the full user experience: opening URLs with both `equity` and `benchmark` params, viewing charts and summaries, handling errors, and operating without API keys.
 
-> **Full URL format:** `/?equity=TICKER,TICKER,...&benchmark=gold|eth|usd&range=1y`
+> **Full URL format:** `/?equity=TICKER,TICKER,...&benchmark=gold|eth|usd&range=1y&amount=10000`
 
 Each scenario is a concrete **"do X, observe Y"** step list that a reviewer can execute locally against `http://localhost:10000`. Scenarios marked **[Implemented]** describe behavior that works today. Scenarios marked **[Not yet implemented]** describe expected future v1 behavior — the feature is designed but the UI component does not exist yet.
 
@@ -646,12 +646,14 @@ Each scenario is a concrete **"do X, observe Y"** step list that a reviewer can 
   - AAPL (50.0%) and MSFT (50.0%) with "equal weight (1/2)" label
   - Benchmarks: GOLD
   - Range: 1y
+  - Investment: $10,000
   - Data loaded line showing tickers and source (Yahoo Finance)
 - A "PERFORMANCE" card is displayed containing an SVG line chart
 - The chart shows normalized % change lines for AAPL, MSFT, and Gold
 - Each line is a different color; Gold is rendered with a dashed line
 - Below the chart: a legend with color swatches and ticker labels
 - Below the legend: attribution text "Indexed to % change from start date — Source: Yahoo Finance"
+- A "SUMMARY" card is displayed with a table showing per-ticker start price, end price, return %, and simulated dollar value (equal-weight split of $10,000)
 - No error banners are visible
 
 **Verification:**
@@ -674,8 +676,9 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=gold&range=1y" | jq '.s
 **Expected:**
 - Portfolio card shows TSMC (33.3%), AAPL (33.3%), MSFT (33.3%) with "equal weight (1/3)"
 - Benchmarks: ETH
+- Range: 1y (default)
+- Investment: $10,000
 - Chart shows four lines: TSMC, AAPL, MSFT (solid), ETH (dashed)
-- Range defaults to 1y
 
 ---
 
@@ -687,6 +690,7 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=gold&range=1y" | jq '.s
 **Expected:**
 - Portfolio card shows AAPL (100.0%) with "equal weight (1/1)"
 - Benchmarks: USD
+- Investment: $10,000
 - Chart shows AAPL performance as a solid line and USD as a dashed flat line at 0%
 - The 0% reference line is visible on the chart
 
@@ -720,6 +724,7 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=usd&range=1y" | jq '.se
   - Portfolio 1: AAPL (50.0%), MSFT (50.0%) — equal weight (1/2)
   - Portfolio 2: GOOG (50.0%), TSLA (50.0%) — equal weight (1/2)
   - Benchmarks: GOLD
+  - Investment: $10,000
 - Chart shows individual ticker lines for AAPL, MSFT, GOOG, TSLA (solid) and Gold (dashed)
 - Each line is visually distinguishable by color
 
@@ -840,7 +845,7 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 **Expected:**
 - The page displays AAPL performance chart without any benchmark lines
 - No call is made to `/api/benchmark`
-- Portfolio card shows AAPL (100.0%) and Range: 1y, with no Benchmarks line
+- Portfolio card shows AAPL (100.0%), Range: 1y, Investment: $10,000, with no Benchmarks line
 
 ---
 
@@ -854,9 +859,11 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 - No chart is rendered
 - No loading indicator appears
 - No API fetches are made
-- The page is in an idle/empty state
-
-> **Note:** A dedicated `LandingState` component with example links and URL format explanation (as described in the original A14) is **not yet implemented**. The current behavior is a blank page with the default layout.
+- A `LandingState` card is displayed with:
+  - Title: "PORTFOLIO COMPARE"
+  - Instructional text: "Compare equity portfolio performance against benchmarks. Add equities to the URL to get started:"
+  - Example URL: `?equity=AAPL,MSFT,GOOG&benchmark=gold&range=1y`
+  - Hint text: "Add `&amount=10000` to simulate a dollar investment."
 
 ---
 
@@ -869,9 +876,11 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 - The parser returns no error (missing equity param = empty portfolios, scenario 6.1)
 - No equity fetch is made
 - The benchmark is fetched and rendered as a single dashed line
-- Portfolio card shows no tickers, Benchmarks: GOLD, Range: 1y
+- Because portfolios are empty, the `LandingState` card is shown (with example URL) instead of a portfolio summary card
+- A "PERFORMANCE" card renders the benchmark line
+- A "SUMMARY" card renders with the benchmark row
 
-> **Note:** Unlike the original A15 which expected an error, the v1 implementation treats missing `equity=` as an empty portfolio list (not an error). This matches parser scenario 6.1.
+> **Note:** Unlike the original A15 which expected an error, the v1 implementation treats missing `equity=` as an empty portfolio list (not an error). This matches parser scenario 6.1. The portfolio summary card is replaced by `LandingState` when no equities are present.
 
 ---
 
@@ -962,21 +971,31 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 
 ---
 
-## A22. Summary table content [Not yet implemented — future v1]
-
-> The `Summary.tsx` component is designed but not yet created. When implemented:
+## A22. Summary table content [Implemented]
 
 **Steps:**
-1. Open any valid URL with equities and benchmark
+1. Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y`
 
 **Expected:**
-- A summary table is displayed below the chart showing for each ticker:
-  - Ticker symbol
-  - Start price (at beginning of range)
-  - End price (at end of range)
-  - Total return %
-  - Annualized return % (if range > 1 year)
-- Benchmark rows are clearly separated from equity rows
+- A summary table is displayed below the chart with columns: Ticker, Start, End, Return
+- Each row shows:
+  - **Ticker** — symbol (e.g., AAPL, MSFT, Gold)
+  - **Start** — price at beginning of range, formatted as USD (e.g., "$123.45")
+  - **End** — price at end of range, formatted as USD
+  - **Return** — total return % with sign (e.g., "+15.23%" or "−3.45%")
+- Positive returns are displayed in green; negative returns in red
+- Both equity and benchmark rows appear in the same table
+
+**With `?amount=` param (dollar-amount simulation):**
+1. Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y&amount=10000`
+
+**Expected (additional):**
+- A **Value** column appears showing the simulated end value for each equity
+- The investment amount is split equally across equity tickers only ($5,000 each for 2 equities)
+- Benchmark rows show "—" in the Value column (benchmarks do not receive an allocation)
+- A **TOTAL** row appears at the bottom showing:
+  - Average return % across equities
+  - Total portfolio end value (sum of all equity end values)
 
 ---
 
@@ -1022,12 +1041,14 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
   - AAPL (50.0%) and MSFT (50.0%) with "equal weight (1/2)" label
   - Benchmarks: GOLD
   - Range: 1y
+  - Investment: $10,000
   - Data loaded: AAPL, MSFT, Gold — Source: Yahoo Finance
 - A "PERFORMANCE" card with an SVG line chart:
   - Solid lines for AAPL and MSFT
   - Dashed line for Gold
   - Legend with color swatches
   - Attribution text
+- A "SUMMARY" card with a table showing per-ticker start/end prices, return %, and simulated dollar value
 - A loading indicator appeared briefly before the chart rendered
 
 ---
@@ -1085,6 +1106,7 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=usd&range=1y" | jq '.se
   - TSMC (33.3%), AAPL (33.3%), MSFT (33.3%) with "equal weight (1/3)" label
   - Benchmarks: GOLD, ETH, USD
   - Range: 1y (default, since range param is omitted)
+  - Investment: $10,000
 - A "PERFORMANCE" card is displayed containing an SVG line chart
 - The chart shows six lines: TSMC, AAPL, MSFT (solid) and Gold, ETH, USD (dashed)
 - USD appears as a flat 0% baseline
@@ -1116,9 +1138,45 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=gold|eth|usd&range=1y" 
 - No chart is rendered
 - No loading indicator appears
 - No API fetches are made
-- The page is in an idle/empty state with the default layout
+- A `LandingState` card is displayed with title "PORTFOLIO COMPARE", an example URL (`?equity=AAPL,MSFT,GOOG&benchmark=gold&range=1y`), and a hint about the `&amount=` param
 
-> **Note:** The README "More examples" table describes this as "Landing state — empty, shows example URL". The dedicated `LandingState` component with example links is **not yet implemented** — the current behavior is a blank page with the default layout. This scenario will be updated when `LandingState` is built.
+---
+
+## A30. Dollar-amount simulation via `?amount=` param [Implemented]
+
+**Steps:**
+1. Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y&amount=25000`
+
+**Expected:**
+- The summary table includes a **Value** column
+- Each equity ticker shows its simulated end value based on an equal split of $25,000 ($12,500 per ticker)
+- Benchmark rows (Gold) show "—" in the Value column
+- A **TOTAL** row at the bottom shows average return and total portfolio value
+- The chart and portfolio summary card are unaffected by the `amount` param
+
+**Default behavior (no `amount` param):**
+1. Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y`
+
+**Expected:**
+- The summary table's **Value** column still appears (default amount is 10000)
+- Equal split: $5,000 per ticker for 2 equities
+
+**Invalid amount:**
+1. Open `http://localhost:10000/?equity=AAPL&amount=abc`
+
+**Expected:**
+- An "Invalid query" error banner: `"Invalid amount: 'abc'. Must be a positive number."`
+- No chart or summary table rendered
+
+2. Open `http://localhost:10000/?equity=AAPL&amount=-100`
+
+**Expected:**
+- An "Invalid query" error banner: `"Invalid amount: '-100'. Must be a positive number."`
+
+3. Open `http://localhost:10000/?equity=AAPL&amount=0`
+
+**Expected:**
+- An "Invalid query" error banner: `"Invalid amount: '0'. Must be a positive number."`
 
 ---
 
@@ -1152,12 +1210,27 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=gold|eth|usd&range=1y" 
 - Invalid range values produce a clear error listing valid options
 - If omitted, defaults to `1y`
 
+## Amount parameter contract
+
+| Aspect | Detail |
+| --- | --- |
+| Parameter name | `amount` |
+| Type | Positive number |
+| Default | `10000` (if omitted or empty) |
+| Effect | Adds a **Value** column to the summary table showing simulated end value per equity |
+| Allocation | Split equally across equity tickers only (benchmarks receive no allocation) |
+| Invalid values | `0`, negative numbers, and non-numeric strings produce a clear error |
+
+- The `amount` param does **not** affect the chart — it only affects the summary table
+- Benchmarks show "—" in the Value column
+- A TOTAL row appears when `amount > 0` and at least one equity is present
+
 ---
 ---
 
 # End-to-End Compare View — UI Wiring Scenarios
 
-The scenarios below cover the full compare page behavior once the UI is wired to the data routes: parse → fetch → compute → render. They define loading, success, error, and edge-case states for a reviewer running the app locally at `http://localhost:10000`.
+The scenarios below cover the full compare page behavior across the wired pipeline: parse → fetch → compute → render. They define loading, success, error, and edge-case states for a reviewer running the app locally at `http://localhost:10000`.
 
 ---
 
@@ -1171,7 +1244,8 @@ The scenarios below cover the full compare page behavior once the UI is wired to
 - The page fetches data from `/api/benchmark?benchmarks=gold&range=1y`
 - The fetched series are normalized to % change from start date
 - A line chart is rendered with one solid line per equity (AAPL, MSFT) and one dashed line for Gold
-- A portfolio summary card is displayed with return data for each series
+- A "PORTFOLIO COMPARE" card is displayed with ticker weights, benchmarks, range, and investment amount
+- A "SUMMARY" card is displayed with a table showing per-ticker start/end prices, return %, and simulated dollar value
 
 **Verification:**
 ```sh
@@ -1303,10 +1377,9 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:10000/api/benchmark?ben
 1. Open `http://localhost:10000/`
 
 **Expected:**
-- The page shows an idle/empty state — no chart, no error, no loading
+- The page shows the `LandingState` card — no chart, no error, no loading
 - No fetch is made to any API route
-
-> **Note:** A dedicated `LandingState` component with example links is not yet implemented. The page currently renders the default layout with no content cards.
+- The landing card displays a title, example URL, and `&amount=` hint
 
 ---
 
@@ -1393,6 +1466,7 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 | **A27** (API routes) | **Implemented** | curl-testable. |
 | **A28** (all benchmarks Try It) | **Implemented** | 3 equities vs gold\|eth\|usd — README "Try it" example. |
 | **A29** (landing Try It) | **Implemented** | `LandingState.tsx` component shows example URLs for first-time users. |
+| **A30** (amount simulation) | **Implemented** | `?amount=` param adds Value column to Summary table; default 10000. |
 | **B1–B5** (success + loading) | **Implemented** | Chart, loading, and summary all work. |
 | **B6–B8** (fetch errors) | **Implemented** | Error banners displayed. |
 | **B9–B11** (invalid/empty/idle) | **Implemented** | Parse errors prevent fetch; idle state works. |
@@ -1452,4 +1526,5 @@ curl -s "http://localhost:10000/api/compare/validate?equity=AAPL:0.5"
 #    http://localhost:10000/                                                   (A14 / A29 — idle state)
 #    http://localhost:10000/?equity=ZZZZZZ                                     (A9 — invalid ticker)
 #    http://localhost:10000/?equity=AAPL&benchmark=banana                      (A11 — invalid benchmark)
+#    http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&amount=25000      (A30 — dollar-amount simulation)
 ```
