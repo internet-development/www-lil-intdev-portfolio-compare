@@ -66,6 +66,22 @@ These constraints define v1 and **must not be violated** without a new version b
 
 ---
 
+## Where to Start
+
+New contributor or agent? Read these files in order:
+
+| # | File | Why |
+| --- | --- | --- |
+| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A27 define end-to-end behavior. This is the single source of truth — when in doubt, defer here. |
+| 2 | `app/page.tsx` | **The compare page.** Fully wired client component: URL parsing → data fetch → normalization → chart render. Start here to understand the end-to-end flow. |
+| 3 | `common/parser.ts` | **The v1 query parser.** Strict validation of `equity=` input. Rejects reserved v2 syntax (`:`, `=`). 62 unit tests in `parser.test.ts`. |
+| 4 | `app/api/market-data/route.ts` | **Server-side data proxy.** Fetches equity prices from Yahoo Finance, keeps API keys off the client, 1-hour cache. |
+| 5 | `common/market-data.ts` | **Normalization engine.** Converts raw price series to indexed % change for apples-to-apples comparison. |
+
+After these five files you'll understand the full pipeline: URL → parse → fetch → normalize → render.
+
+---
+
 ## 2. Stack
 
 | Layer            | Technology                         | Notes                                                      |
@@ -208,7 +224,7 @@ Files marked ✓ exist. Files marked ○ need to be created.
 ```
 app/
   layout.tsx               ✓ root layout (Providers wrapper, theme-light body)
-  page.tsx                 ✓ currently SRCL kitchen sink — will become compare page
+  page.tsx                 ✓ compare page ('use client') — parse → fetch → normalize → render
   head.tsx                 ✓ head metadata
   manifest.ts              ✓ web manifest
   robots.ts                ✓ robots config
@@ -216,6 +232,7 @@ app/
   api/
     market-data/route.ts   ✓ proxies equity price requests (Yahoo Finance)
     benchmark/route.ts     ✓ proxies benchmark price requests (Yahoo Finance + USD baseline)
+    compare/validate/route.ts ✓ server-side query validation endpoint
 common/
   constants.ts             ✓ app-wide constants (API URLs, limits)
   utilities.ts             ✓ utility functions
@@ -228,9 +245,11 @@ common/
   parser.ts                ✓ v1 strict equity parser (see §3.2, tested in parser.test.ts)
   query.ts                 ✓ full query entry point: equity + benchmark + range parsing
   portfolio.ts             ✓ equal-weight portfolio construction (1/N weights)
+  compare-fetcher.ts       ✓ client-side fetch helper — calls /api/market-data + /api/benchmark
 components/
-  Chart.tsx                ○ performance chart component
-  Chart.module.css         ○
+  Chart.tsx                ✓ SVG line chart (normalized % change vs time)
+  Chart.module.css         ✓ chart styles
+  CopyURLExamples.tsx      ✓ utility for copying URL examples
   Summary.tsx              ○ summary table component
   Summary.module.css       ○
   ErrorState.tsx           ○ error display component
@@ -246,13 +265,14 @@ Place new files in the pattern above. Reuse existing SRCL components (Card, Tabl
 
 The repo is a fork of the **SRCL** component library (sacred.computer). Key things to know:
 
-- **`app/page.tsx`** is the portfolio compare page (`'use client'`). It uses `useCompareQuery()` (a custom hook that calls `parseCompareQuery(searchParams)` on mount) to parse URL params client-side. On error it renders an `AlertBanner`; on success it renders an inline `PortfolioSummary` card showing parsed tickers with equal weights, benchmarks, and range. **Data fetching and chart rendering are not yet wired into this component** — the page does not call `/api/market-data` or `/api/benchmark`.
+- **`app/page.tsx`** is the portfolio compare page (`'use client'`). It is **fully wired end-to-end**: parse → fetch → normalize → render. It uses `useCompareQuery()` to parse URL params, `useCompareData()` (backed by `fetchCompareData()` from `common/compare-fetcher.ts`) to fetch market data, `normalizeAllSeries()` to compute % change, and `Chart.tsx` to render an SVG line chart. Loading (`BlockLoader`), error (`AlertBanner`), and empty/idle states are all handled.
 - **`useCompareQuery()`** returns `{ query: CompareQuery | null, error: string | null }`. The `CompareQuery` contains `portfolios: WeightedPortfolio[]`, `benchmarks: BenchmarkValue[]`, and `range: RangeValue` — all the info needed to build API fetch URLs.
+- **`common/compare-fetcher.ts`** is the client-side fetch abstraction. It calls `/api/market-data` and `/api/benchmark` and returns typed `SeriesData[]`.
 - **`app/concept-1/` and `app/concept-2/`** are alternative layout demos. Leave them in place — they don't interfere with the compare page.
 - **`app/layout.tsx`** wraps everything in `<Providers>` with `className="theme-light"`. Do not modify the root layout unless necessary.
 - **`next.config.js`** is minimal (`devIndicators: false`). No special configuration needed for API routes.
-- **`components/page/DefaultLayout.tsx`** and **`components/page/DefaultActionBar.tsx`** provide the standard page shell. Consider reusing `DefaultLayout` for the compare page.
-- **No domain-specific UI components exist yet.** `Chart.tsx`, `Summary.tsx`, `ErrorState.tsx`, and `LandingState.tsx` are all still to be created (see §7). All current UI is built from generic SRCL primitives (`Card`, `AlertBanner`, `DataTable`, `BlockLoader`, etc.).
+- **`components/page/DefaultLayout.tsx`** and **`components/page/DefaultActionBar.tsx`** provide the standard page shell. `DefaultLayout` is used by the compare page.
+- **Domain-specific components created so far:** `Chart.tsx` (SVG line chart, fully functional). Still to be created: `Summary.tsx`, `ErrorState.tsx`, `LandingState.tsx` (see §7). The page currently uses generic SRCL primitives (`Card`, `AlertBanner`, `BlockLoader`) for non-chart UI.
 
 ---
 
@@ -315,14 +335,13 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 | **Parse** | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` | 98 unit tests passing (Vitest). Covers SCENARIOS.md §1–§13. |
 | **Fetch** | Done | `app/api/market-data/route.ts`, `app/api/benchmark/route.ts` | Yahoo Finance (free, no key). 1-hour cache. See §4.2.1 for constraints. |
 | **Compute** | Done | `common/market-data.ts`, `common/portfolio.ts` | Normalization to % change + equal-weight return computation. |
-| **Render** | Not started | `app/page.tsx` (summary only) | Page shows parsed portfolio card. Chart component (`Chart.tsx`) and data-fetch wiring not yet implemented. |
+| **Render** | Partial | `app/page.tsx`, `components/Chart.tsx` | Page is fully wired: parse → fetch → normalize → Chart. `Summary.tsx`, `ErrorState.tsx`, `LandingState.tsx` not yet created. |
 | **Validate API** | Done | `app/api/compare/validate/route.ts` | Server-side query validation endpoint. |
 
-**Next steps for the render layer:**
-1. Create `Chart.tsx` — render normalized series as `<svg>` or `<canvas>` line chart
-2. Wire `app/page.tsx` to fetch from `/api/market-data` and `/api/benchmark` using the parsed query
-3. Pass fetched + normalized data to `Chart` and a `Summary` table component
-4. Add loading, error, and empty states
+**Remaining render work:**
+1. Create `Summary.tsx` — tabular performance stats (per-ticker return %, scenario A21)
+2. Create `ErrorState.tsx` — dedicated fetch-error display (currently uses inline `AlertBanner`)
+3. Create `LandingState.tsx` — empty/welcome state when no query params (scenario A14)
 
 ---
 
@@ -423,14 +442,15 @@ Each file below is tagged with its pipeline stage. When making changes, limit PR
 | **Parse** | `common/query.ts` | ✓ | Entry point: `parseCompareQuery(searchParams) → QueryResult` |
 | **Parse** | `common/portfolio.ts` | ✓ | `buildEqualWeightPortfolio()`, `computePortfolioReturn()` |
 | **Parse** | `common/types.ts` | ✓ | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue` |
+| **Fetch** | `common/compare-fetcher.ts` | ✓ | Client-side fetch helper — calls `/api/market-data` + `/api/benchmark`, returns typed `SeriesData[]` |
 | **Fetch** | `app/api/market-data/route.ts` | ✓ | `GET ?tickers=…&range=…` → `{ series: SeriesData[] }`. Yahoo Finance, 1h cache. |
 | **Fetch** | `app/api/benchmark/route.ts` | ✓ | `GET ?benchmarks=…&range=…` → `{ series: SeriesData[] }`. Gold/ETH via Yahoo; USD = synthetic flat baseline. |
 | **Fetch** | `app/api/compare/validate/route.ts` | ✓ | Server-side validation only (optional pre-check before fetching data). |
 | **Compute** | `common/market-data.ts` | ✓ | `normalizeSeries()`, `normalizeAllSeries()`, `isValidRange()`, `isValidBenchmark()`. Also exports `NormalizedPoint`, `NormalizedSeries` types. |
 | **Compute** | `common/portfolio.ts` | ✓ | `computePortfolioReturn()` — weighted sum of per-ticker returns |
-| **Render** | `app/page.tsx` | ✓ | Compare page — currently parse-only, needs fetch + compute + render wiring |
-| **Render** | `components/Chart.tsx` | ○ | Line chart (normalized % change vs time) |
-| **Render** | `components/Chart.module.css` | ○ | Chart styles |
+| **Render** | `app/page.tsx` | ✓ | Compare page — fully wired: parse → fetch → normalize → Chart |
+| **Render** | `components/Chart.tsx` | ✓ | SVG line chart (normalized % change vs time) |
+| **Render** | `components/Chart.module.css` | ✓ | Chart styles |
 | **Render** | `components/Summary.tsx` | ○ | Performance summary table |
 | **Render** | `components/Summary.module.css` | ○ | Summary styles |
 | **Render** | `components/ErrorState.tsx` | ○ | Fetch-error display (distinct from parse-error `AlertBanner`) |
@@ -448,12 +468,12 @@ The client-side parser reads user-facing param names; the API routes accept diff
 
 ### Wiring checklist for `app/page.tsx`
 
-When connecting the parse → fetch → compute → render pipeline, the page component needs:
+Current status of the parse → fetch → compute → render pipeline:
 
-1. **Parse** — already done (`useCompareQuery()` returns `CompareQuery`)
-2. **Fetch** — call `/api/market-data` and `/api/benchmark` using the parsed query. Use `useEffect` or a data-fetching hook. Handle loading, error, and success states.
-3. **Compute** — pass raw `SeriesData[]` through `normalizeAllSeries()` and `computePortfolioReturn()` to produce chart-ready data.
-4. **Render** — pass `NormalizedSeries[]` to `Chart.tsx`; pass raw + computed data to `Summary.tsx`. Show `LandingState` when no query, `AlertBanner` on parse error, `ErrorState` on fetch error, and `BlockLoader` while loading.
+1. **Parse** — done (`useCompareQuery()` returns `CompareQuery`)
+2. **Fetch** — done (`useCompareData()` calls `fetchCompareData()` from `common/compare-fetcher.ts`; handles loading, error, and success states)
+3. **Compute** — done (raw `SeriesData[]` passed through `normalizeAllSeries()` to produce chart-ready data)
+4. **Render** — partial (`NormalizedSeries[]` passed to `Chart.tsx`; `AlertBanner` on parse/fetch error; `BlockLoader` while loading; idle text when no query). Still TODO: `Summary.tsx` table, dedicated `ErrorState.tsx`, `LandingState.tsx`.
 
 ---
 
@@ -530,17 +550,17 @@ npm run test:watch    # watch mode
 
 > Audit performed 2026-02-11. Each item is a concrete drift between docs and current code.
 
-### LIL-INTDEV-AGENTS.md — Outdated Sections
+### LIL-INTDEV-AGENTS.md — Fixed by Task 3
 
-- [ ] **§7 Directory Structure — `Chart.tsx` / `Chart.module.css` marked `○` but exist.** Both files are fully implemented (`components/Chart.tsx` renders an SVG line chart). Update to `✓`.
-- [ ] **§7 Directory Structure — `common/compare-fetcher.ts` missing from listing.** This file exists and is a key pipeline piece (client-side fetch helper). Add it with `✓`.
-- [ ] **§8 Existing Codebase Notes — first bullet outdated.** States "Data fetching and chart rendering are not yet wired into this component." The page (`app/page.tsx`) is now fully wired: parse → fetch (`useCompareData` / `fetchCompareData`) → compute (`normalizeAllSeries`) → render (`Chart.tsx`). Rewrite to reflect current state.
-- [ ] **§8 — "No domain-specific UI components exist yet" is wrong.** `Chart.tsx` exists and is functional. Update list of existing vs. planned components.
-- [ ] **§11.2 v1 Pipeline Status — Render row says "Not started".** The render layer is done: `Chart.tsx` exists, `app/page.tsx` wires fetch → normalize → Chart. Update status to "Done" and revise notes.
-- [ ] **§11.2 — "Next steps for the render layer" block is stale.** All four listed steps are completed. Remove or mark as done.
-- [ ] **§11.3 Wiring Checklist — steps 2-4 described as TODO.** Fetch, compute, and render are all implemented in `app/page.tsx`. Update to reflect completed status.
-- [ ] **§11.3 File map — `Chart.tsx` and `Chart.module.css` listed as `○`.** Both exist. Update to `✓`.
-- [ ] **§11.3 File map — `common/compare-fetcher.ts` not listed.** Add to the Fetch stage row with `✓`.
+- [x] **§7 Directory Structure — `Chart.tsx` / `Chart.module.css` marked `○` but exist.** Updated to `✓`.
+- [x] **§7 Directory Structure — `common/compare-fetcher.ts` missing from listing.** Added with `✓`.
+- [x] **§8 Existing Codebase Notes — first bullet outdated.** Rewritten to reflect fully wired state.
+- [x] **§8 — "No domain-specific UI components exist yet" is wrong.** Updated to list `Chart.tsx` as existing.
+- [x] **§11.2 v1 Pipeline Status — Render row says "Not started".** Updated to "Partial" with accurate notes.
+- [x] **§11.2 — "Next steps for the render layer" block is stale.** Replaced with remaining render work only.
+- [x] **§11.3 Wiring Checklist — steps 2-4 described as TODO.** Updated to reflect completed status.
+- [x] **§11.3 File map — `Chart.tsx` and `Chart.module.css` listed as `○`.** Updated to `✓`.
+- [x] **§11.3 File map — `common/compare-fetcher.ts` not listed.** Added to Fetch stage with `✓`.
 
 ### SCENARIOS.md — No Structural Drift (Minor Gaps)
 
@@ -559,7 +579,7 @@ npm run test:watch    # watch mode
 
 | Area | Severity | Items |
 | --- | --- | --- |
-| **LIL-INTDEV-AGENTS.md** — §7, §8, §11.2, §11.3 | High | 9 items — pipeline status and file listings are wrong (show pre-implementation state) |
+| **LIL-INTDEV-AGENTS.md** — §7, §8, §11.2, §11.3 | ~~High~~ Fixed | 9 items — all resolved by Task 3 |
 | **SCENARIOS.md** | Low | 1 item — no status tracking on implemented vs. aspirational scenarios |
 | **README.md** | None | Accurate — no changes needed |
 | **package.json** | Low | 2 items — cosmetic name/description from SRCL template |
