@@ -258,10 +258,10 @@ components/
   Chart.tsx                ✓ SVG line chart (normalized % change vs time)
   Chart.module.css         ✓ chart styles
   CopyURLExamples.tsx      ✓ utility for copying URL examples
-  Summary.tsx              ○ summary table component
-  Summary.module.css       ○
-  ErrorState.tsx           ○ error display component
-  LandingState.tsx         ○ empty/welcome state (scenario A13)
+  Summary.tsx              ✓ summary table (per-ticker prices, returns, dollar values)
+  Summary.module.css       ✓ summary styles
+  ErrorState.tsx           ✓ error display component (parse + fetch errors)
+  LandingState.tsx         ✓ empty/welcome state (scenario A14)
   (100+ SRCL components)   ✓ Card, Table, Grid, Row, Button, etc.
 ```
 
@@ -276,11 +276,10 @@ The repo is a fork of the **SRCL** component library (sacred.computer). Key thin
 - **`app/page.tsx`** is the portfolio compare page (`'use client'`). It is **fully wired end-to-end**: parse → fetch → normalize → render. It uses `useCompareQuery()` to parse URL params, `useCompareData()` (backed by `fetchCompareData()` from `common/compare-fetcher.ts`) to fetch market data, `normalizeAllSeries()` to compute % change, and `Chart.tsx` to render an SVG line chart. Loading (`BlockLoader`), error (`AlertBanner`), and empty/idle states are all handled.
 - **`useCompareQuery()`** returns `{ query: CompareQuery | null, error: string | null }`. The `CompareQuery` contains `portfolios: WeightedPortfolio[]`, `benchmarks: BenchmarkValue[]`, and `range: RangeValue` — all the info needed to build API fetch URLs.
 - **`common/compare-fetcher.ts`** is the client-side fetch abstraction. It calls `/api/market-data` and `/api/benchmark` and returns typed `SeriesData[]`.
-- **`app/concept-1/` and `app/concept-2/`** are alternative layout demos. Leave them in place — they don't interfere with the compare page.
 - **`app/layout.tsx`** wraps everything in `<Providers>` with `className="theme-light"`. Do not modify the root layout unless necessary.
 - **`next.config.js`** is minimal (`devIndicators: false`). No special configuration needed for API routes.
 - **`components/page/DefaultLayout.tsx`** and **`components/page/DefaultActionBar.tsx`** provide the standard page shell. `DefaultLayout` is used by the compare page.
-- **Domain-specific components created so far:** `Chart.tsx` (SVG line chart, fully functional). Still to be created: `Summary.tsx`, `ErrorState.tsx`, `LandingState.tsx` (see §7). The page currently uses generic SRCL primitives (`Card`, `AlertBanner`, `BlockLoader`) for non-chart UI.
+- **Domain-specific components:** `Chart.tsx` (SVG line chart), `Summary.tsx` (per-ticker price/return/value table), `ErrorState.tsx` (error display), `LandingState.tsx` (empty/welcome state). The page also uses generic SRCL primitives (`Card`, `BlockLoader`) for layout.
 
 ---
 
@@ -343,13 +342,8 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 | **Parse** | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` | 98 unit tests passing (Vitest). Covers SCENARIOS.md §1–§13. |
 | **Fetch** | Done | `app/api/market-data/route.ts`, `app/api/benchmark/route.ts` | Yahoo Finance (free, no key). 1-hour cache. See §4.2.1 for constraints. |
 | **Compute** | Done | `common/market-data.ts`, `common/portfolio.ts` | Normalization to % change + equal-weight return computation. |
-| **Render** | Partial | `app/page.tsx`, `components/Chart.tsx` | Page is fully wired: parse → fetch → normalize → Chart. `Summary.tsx`, `ErrorState.tsx`, `LandingState.tsx` not yet created. |
+| **Render** | Done | `app/page.tsx`, `components/Chart.tsx`, `components/Summary.tsx`, `components/ErrorState.tsx`, `components/LandingState.tsx` | Full pipeline: parse → fetch → normalize → Chart + Summary table. Error and landing states extracted to dedicated components. Dollar-amount simulation via `?amount=` param. |
 | **Validate API** | Done | `app/api/compare/validate/route.ts` | Server-side query validation endpoint. |
-
-**Remaining render work:**
-1. Create `Summary.tsx` — tabular performance stats (per-ticker return %, scenario A21)
-2. Create `ErrorState.tsx` — dedicated fetch-error display (currently uses inline `AlertBanner`)
-3. Create `LandingState.tsx` — empty/welcome state when no query params (scenario A14)
 
 ---
 
@@ -459,10 +453,10 @@ Each file below is tagged with its pipeline stage. When making changes, limit PR
 | **Render** | `app/page.tsx` | ✓ | Compare page — fully wired: parse → fetch → normalize → Chart |
 | **Render** | `components/Chart.tsx` | ✓ | SVG line chart (normalized % change vs time) |
 | **Render** | `components/Chart.module.css` | ✓ | Chart styles |
-| **Render** | `components/Summary.tsx` | ○ | Performance summary table |
-| **Render** | `components/Summary.module.css` | ○ | Summary styles |
-| **Render** | `components/ErrorState.tsx` | ○ | Fetch-error display (distinct from parse-error `AlertBanner`) |
-| **Render** | `components/LandingState.tsx` | ○ | Empty/welcome state when no query params (scenario A14) |
+| **Render** | `components/Summary.tsx` | ✓ | Per-ticker price/return/value summary table |
+| **Render** | `components/Summary.module.css` | ✓ | Summary styles |
+| **Render** | `components/ErrorState.tsx` | ✓ | Error display (parse + fetch errors) |
+| **Render** | `components/LandingState.tsx` | ✓ | Empty/welcome state when no query params (scenario A14) |
 
 ### Param translation — client URL to API route
 
@@ -481,7 +475,7 @@ Current status of the parse → fetch → compute → render pipeline:
 1. **Parse** — done (`useCompareQuery()` returns `CompareQuery`)
 2. **Fetch** — done (`useCompareData()` calls `fetchCompareData()` from `common/compare-fetcher.ts`; handles loading, error, and success states)
 3. **Compute** — done (raw `SeriesData[]` passed through `normalizeAllSeries()` to produce chart-ready data)
-4. **Render** — partial (`NormalizedSeries[]` passed to `Chart.tsx`; `AlertBanner` on parse/fetch error; `BlockLoader` while loading; idle text when no query). Still TODO: `Summary.tsx` table, dedicated `ErrorState.tsx`, `LandingState.tsx`.
+4. **Render** — done (`NormalizedSeries[]` passed to `Chart.tsx`; `Summary.tsx` shows per-ticker prices/returns/value; `ErrorState.tsx` for parse/fetch errors; `LandingState.tsx` for empty/welcome state; `BlockLoader` while loading).
 
 ---
 

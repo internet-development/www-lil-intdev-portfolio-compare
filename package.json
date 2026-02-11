@@ -1,6 +1,6 @@
 {
-  "name": "srcl",
-  "description": "SRCL is an open-source React component and style repository that helps you build web applications, desktop applications, and static websites with terminal aesthetics.",
+  "name": "www-lil-intdev-portfolio-compare",
+  "description": "Compare equity portfolio performance against commodity and crypto benchmarks. Built with SRCL terminal aesthetics.",
   "engines": {
     "node": ">=18"
   },
@@ -22,7 +22,6 @@
   "devDependencies": {
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

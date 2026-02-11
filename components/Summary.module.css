@@ -1,0 +1,43 @@
+.root {
+  width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size);
+}
+
+.table th,
+.table td {
+  text-align: right;
+  padding: 4px 1ch;
+  border-bottom: 1px solid var(--theme-border);
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.table th {
+  font-weight: 600;
+  opacity: 0.5;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.positive {
+  color: #16a34a;
+}
+
+.negative {
+  color: #dc2626;
+}
+
+.total {
+  font-weight: 600;
+  border-top: 2px solid var(--theme-border);
+}

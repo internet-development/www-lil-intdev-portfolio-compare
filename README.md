@@ -26,6 +26,7 @@ All application state lives in the URL. Copy and share any URL to reproduce the 
 | `equity`    | Yes      | Comma-separated ticker list   | —       | Up to 20 tickers per portfolio (e.g. `AAPL,MSFT,TSMC`). Repeat for multi-portfolio (max 5). |
 | `benchmark` | No       | Pipe-separated benchmark list | —       | One or more benchmarks: `gold`, `eth`, `usd`     |
 | `range`     | No       | Time range code               | `1y`    | `1m`, `3m`, `6m`, `ytd`, `1y`, `3y`, `5y`, `max` |
+| `amount`    | No       | Positive number               | `10000` | Simulated lump-sum investment at start date (e.g. `10000`) |
 
 ### URL Examples
 
@@ -190,8 +191,10 @@ The app works without a paid API key when using free-tier data providers.
 - **No client-side caching.** Changing the URL re-fetches all data. There is no client-side cache or deduplication across navigations.
 - **Date alignment.** When series have different trading calendars, only dates present in all series are shown. Some data points may be dropped at the edges.
 - **No hover tooltips or interactive chart features.** The v1 chart is a static SVG line chart without hover, zoom, or tooltip interactions.
-- **No summary table.** The v1 render layer includes a portfolio summary card and chart but does not yet include a detailed summary table with per-ticker start/end prices and annualized returns.
+- **Summary table is basic.** The summary table shows per-ticker start/end prices, total return %, and simulated dollar value — but does not include annualized returns or Sharpe ratio.
 
 ## Contact
+
+**Maintainers:** [@sh-marvin](https://github.com/sh-marvin), [@sh-rebecca](https://github.com/sh-rebecca), [@sh-peterben](https://github.com/sh-peterben)
 
 Questions? Ping [@wwwjim](https://www.twitter.com/wwwjim) or [@internetxstudio](https://x.com/internetxstudio).
