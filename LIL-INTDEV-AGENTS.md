@@ -72,13 +72,21 @@ New contributor or agent? Read these files in order:
 
 | # | File | Why |
 | --- | --- | --- |
-| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A27 define end-to-end behavior. This is the single source of truth — when in doubt, defer here. |
+| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A29 define end-to-end behavior. This is the single source of truth — when in doubt, defer here. |
 | 2 | `app/page.tsx` | **The compare page.** Fully wired client component: URL parsing → data fetch → normalization → chart render. Start here to understand the end-to-end flow. |
 | 3 | `common/parser.ts` | **The v1 query parser.** Strict validation of `equity=` input. Rejects reserved v2 syntax (`:`, `=`). 62 unit tests in `parser.test.ts`. |
 | 4 | `app/api/market-data/route.ts` | **Server-side data proxy.** Fetches equity prices from Yahoo Finance, keeps API keys off the client, 1-hour cache. |
 | 5 | `common/market-data.ts` | **Normalization engine.** Converts raw price series to indexed % change for apples-to-apples comparison. |
 
 After these five files you'll understand the full pipeline: URL → parse → fetch → normalize → render.
+
+### Verification quick-reference
+
+Before submitting any PR, run through the verification loop to confirm nothing is broken:
+
+1. **Quick check (3 items):** [`README.md` → Quick Verification Checklist](./README.md#quick-verification-checklist) — happy path, error path, unit tests.
+2. **Full procedure:** [`SCENARIOS.md` → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist) — curl-based API tests, validation endpoint, and browser scenarios. This is the authoritative checklist; when in doubt, follow SCENARIOS.md.
+3. **Acceptance criteria:** [`SCENARIOS.md`](./SCENARIOS.md) sections A1–A29 and B1–B15 define every observable behavior. The [Scenario Implementation Status](./SCENARIOS.md#scenario-implementation-status) table shows which scenarios are testable today.
 
 ---
 
@@ -498,7 +506,7 @@ npm install                 # install dependencies (node >= 18)
 npm run dev                 # dev server → http://localhost:10000
 ```
 
-Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold` to verify the app is running.
+Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold` to verify the app is running. For a step-by-step verification procedure, see the [README → Quick Verification Checklist](./README.md#quick-verification-checklist) (3-item summary) or the [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist) (full procedure with curl tests and browser scenarios).
 
 ### 13.1 Available npm scripts
 
