@@ -1378,21 +1378,21 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 | **A9–A10** (invalid ticker) | **Implemented** | Fetch error displayed, no partial render. |
 | **A11** (invalid benchmark) | **Implemented** | Parser rejects with valid-benchmark list. |
 | **A12–A13** (empty/missing benchmark) | **Implemented** | Equity-only chart renders. |
-| **A14** (landing state) | **Partial** | Idle state works, but no dedicated `LandingState` component with examples. |
+| **A14** (landing state) | **Implemented** | `LandingState.tsx` component with example URLs and `?amount=` hint. |
 | **A15** (benchmark only) | **Implemented** | Benchmark-only chart renders (no error — empty portfolios allowed). |
 | **A16** (auth-free) | **Implemented** | Yahoo Finance requires no API key. |
 | **A17–A18** (API key) | **Not testable** | Only relevant if keyed provider is configured. |
 | **A19** (rate limit) | **Implemented** | API routes return appropriate error on 429. |
 | **A20** (shareable URL) | **Implemented** | URL encodes all state. |
 | **A21** (URL change) | **Implemented** | Page re-renders on navigation. |
-| **A22** (summary table) | **Not yet implemented** | `Summary.tsx` not created. |
+| **A22** (summary table) | **Implemented** | `Summary.tsx` shows per-ticker start/end prices, return %, and simulated dollar value. |
 | **A23** (hover/tooltip) | **Not yet implemented** | Chart is static SVG. |
 | **A24** (mobile) | **Implemented** | SVG scales via viewBox. |
 | **A25** (sanity check) | **Implemented** | Full pipeline works. |
 | **A26** (v2 rejection) | **Implemented** | Parser error displayed in UI. |
 | **A27** (API routes) | **Implemented** | curl-testable. |
 | **A28** (all benchmarks Try It) | **Implemented** | 3 equities vs gold\|eth\|usd — README "Try it" example. |
-| **A29** (landing Try It) | **Implemented** | Idle state for first-time user; `LandingState` component not yet built. |
+| **A29** (landing Try It) | **Implemented** | `LandingState.tsx` component shows example URLs for first-time users. |
 | **B1–B5** (success + loading) | **Implemented** | Chart, loading, and summary all work. |
 | **B6–B8** (fetch errors) | **Implemented** | Error banners displayed. |
 | **B9–B11** (invalid/empty/idle) | **Implemented** | Parse errors prevent fetch; idle state works. |

@@ -564,24 +564,24 @@ npm run test:watch    # watch mode
 - [x] **§11.3 File map — `Chart.tsx` and `Chart.module.css` listed as `○`.** Updated to `✓`.
 - [x] **§11.3 File map — `common/compare-fetcher.ts` not listed.** Added to Fetch stage with `✓`.
 
-### SCENARIOS.md — No Structural Drift (Minor Gaps)
+### SCENARIOS.md — Fixed by Task 2
 
-- [ ] **A-section / B-section scenario status tracking.** The doc does not indicate which end-to-end scenarios are currently testable vs. aspirational. Consider adding a "status" column or annotation (e.g., A1-A5 chart rendering: implemented; A22 summary table: not yet; A23 hover tooltips: not yet; B1-B15: mostly implemented).
+- [x] **A-section / B-section scenario status tracking.** Updated Scenario Implementation Status table — A14 (LandingState), A22 (Summary table), and A29 (landing Try It) now marked as Implemented to match current codebase.
 
-### README.md — Mostly Current
+### README.md — Accurate
 
-- [ ] **README is accurate.** The "v1 Pipeline Status" table, "Try It" section, and "Known v1 Limitations" all match the current codebase. No changes required.
+- [x] **README is accurate.** The "v1 Pipeline Status" table, "Try It" section, and "Known v1 Limitations" all match the current codebase. No changes required.
 
-### package.json — Cosmetic Drift
+### package.json — Fixed by Prior PRs
 
-- [ ] **`name` field is `"srcl"`.** The repo is `www-lil-intdev-portfolio-compare`, but the package name still reflects the original SRCL template. Consider updating to `"www-lil-intdev-portfolio-compare"` or similar.
-- [ ] **`description` field describes SRCL.** The description says "SRCL is an open-source React component and style repository…" which no longer matches the app's purpose. Consider updating to describe the portfolio compare tool.
+- [x] **`name` field updated.** Now `"www-lil-intdev-portfolio-compare"`.
+- [x] **`description` field updated.** Now describes the portfolio compare tool.
 
 ### Summary
 
 | Area | Severity | Items |
 | --- | --- | --- |
 | **LIL-INTDEV-AGENTS.md** — §7, §8, §11.2, §11.3 | ~~High~~ Fixed | 9 items — all resolved by Task 3 |
-| **SCENARIOS.md** | Low | 1 item — no status tracking on implemented vs. aspirational scenarios |
+| **SCENARIOS.md** | ~~Low~~ Fixed | 1 item — status table updated by Task 2 |
 | **README.md** | None | Accurate — no changes needed |
-| **package.json** | Low | 2 items — cosmetic name/description from SRCL template |
+| **package.json** | ~~Low~~ Fixed | 2 items — name/description updated by prior PRs |
