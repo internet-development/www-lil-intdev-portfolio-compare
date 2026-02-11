@@ -845,7 +845,7 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 **Expected:**
 - The page displays AAPL performance chart without any benchmark lines
 - No call is made to `/api/benchmark`
-- Portfolio card shows AAPL (100.0%) and Range: 1y, with no Benchmarks line
+- Portfolio card shows AAPL (100.0%), Range: 1y, Investment: $10,000, with no Benchmarks line
 
 ---
 
@@ -876,9 +876,11 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 - The parser returns no error (missing equity param = empty portfolios, scenario 6.1)
 - No equity fetch is made
 - The benchmark is fetched and rendered as a single dashed line
-- Portfolio card shows no tickers, Benchmarks: GOLD, Range: 1y
+- Because portfolios are empty, the `LandingState` card is shown (with example URL) instead of a portfolio summary card
+- A "PERFORMANCE" card renders the benchmark line
+- A "SUMMARY" card renders with the benchmark row
 
-> **Note:** Unlike the original A15 which expected an error, the v1 implementation treats missing `equity=` as an empty portfolio list (not an error). This matches parser scenario 6.1.
+> **Note:** Unlike the original A15 which expected an error, the v1 implementation treats missing `equity=` as an empty portfolio list (not an error). This matches parser scenario 6.1. The portfolio summary card is replaced by `LandingState` when no equities are present.
 
 ---
 
@@ -1242,7 +1244,8 @@ The scenarios below cover the full compare page behavior across the wired pipeli
 - The page fetches data from `/api/benchmark?benchmarks=gold&range=1y`
 - The fetched series are normalized to % change from start date
 - A line chart is rendered with one solid line per equity (AAPL, MSFT) and one dashed line for Gold
-- A portfolio summary card is displayed with return data for each series
+- A "PORTFOLIO COMPARE" card is displayed with ticker weights, benchmarks, range, and investment amount
+- A "SUMMARY" card is displayed with a table showing per-ticker start/end prices, return %, and simulated dollar value
 
 **Verification:**
 ```sh
