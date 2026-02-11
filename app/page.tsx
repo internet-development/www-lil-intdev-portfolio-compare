@@ -5,11 +5,13 @@ import '@root/global.css';
 
 import * as React from 'react';
 
-import AlertBanner from '@components/AlertBanner';
 import BlockLoader from '@components/BlockLoader';
 import Card from '@components/Card';
 import Chart from '@components/Chart';
 import DefaultLayout from '@components/page/DefaultLayout';
+import ErrorState from '@components/ErrorState';
+import LandingState from '@components/LandingState';
+import Summary from '@components/Summary';
 
 import { parseCompareQuery } from '@common/query';
 import type { CompareQuery } from '@common/query';
@@ -90,14 +92,7 @@ function useCompareData(query: CompareQuery | null): FetchState {
 
 function PortfolioSummary({ query, allSeries }: { query: CompareQuery; allSeries?: SeriesData[] }) {
   if (query.portfolios.length === 0) {
-    return (
-      <Card title="PORTFOLIO COMPARE">
-        <p>
-          Add equities to the URL to get started. Example:{' '}
-          <code>?equity=AAPL,MSFT,GOOG&benchmark=gold&range=1y</code>
-        </p>
-      </Card>
-    );
+    return <LandingState />;
   }
 
   return (
@@ -118,8 +113,11 @@ function PortfolioSummary({ query, allSeries }: { query: CompareQuery; allSeries
           <strong>Benchmarks:</strong> {query.benchmarks.join(', ').toUpperCase()}
         </div>
       )}
-      <div style={{ marginBottom: allSeries ? 8 : 0 }}>
+      <div style={{ marginBottom: 8 }}>
         <strong>Range:</strong> {query.range}
+      </div>
+      <div style={{ marginBottom: allSeries ? 8 : 0 }}>
+        <strong>Investment:</strong> ${query.amount.toLocaleString()}
       </div>
       {allSeries && allSeries.length > 0 && (
         <div style={{ marginTop: 8, opacity: 0.5, fontSize: '0.85em' }}>
@@ -147,27 +145,27 @@ export default function Page() {
     return fetchState.data.benchmarkSeries.map((s) => s.ticker);
   }, [fetchState]);
 
+  const isIdle = !query && !parseError;
+
   return (
     <DefaultLayout previewPixelSRC="https://intdev-global.s3.us-west-2.amazonaws.com/template-app-icon.png">
-      {parseError && (
-        <AlertBanner>
-          <strong>Invalid query:</strong> {parseError}
-        </AlertBanner>
-      )}
-      {fetchState.status === 'error' && (
-        <AlertBanner>
-          <strong>Fetch error:</strong> {fetchState.error}
-        </AlertBanner>
-      )}
+      {parseError && <ErrorState title="Invalid query" message={parseError} />}
+      {fetchState.status === 'error' && <ErrorState title="Fetch error" message={fetchState.error} />}
       {fetchState.status === 'loading' && (
         <Card title="LOADING">
           <BlockLoader mode={1} /> Fetching market data…
         </Card>
       )}
+      {isIdle && <LandingState />}
       {query && <PortfolioSummary query={query} allSeries={allSeries} />}
       {normalizedSeries.length > 0 && (
         <Card title="PERFORMANCE">
           <Chart series={normalizedSeries} benchmarkTickers={benchmarkTickers} />
+        </Card>
+      )}
+      {allSeries && allSeries.length > 0 && query && (
+        <Card title="SUMMARY">
+          <Summary series={allSeries} amount={query.amount} benchmarkTickers={benchmarkTickers} />
         </Card>
       )}
     </DefaultLayout>

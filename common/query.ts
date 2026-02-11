@@ -14,6 +14,7 @@ export interface CompareQuery {
   portfolios: WeightedPortfolio[];
   benchmarks: BenchmarkValue[];
   range: RangeValue;
+  amount: number;
 }
 
 export interface QuerySuccess {
@@ -78,12 +79,28 @@ export function parseCompareQuery(searchParams: URLSearchParams): QueryResult {
     };
   }
 
+  // 5. Parse amount parameter (defaults to 10000)
+  const amountRaw = searchParams.get('amount');
+  let amount = 10000;
+
+  if (amountRaw !== null && amountRaw !== '') {
+    const parsed = Number(amountRaw);
+    if (isNaN(parsed) || parsed <= 0) {
+      return {
+        ok: false,
+        error: `Invalid amount: '${amountRaw}'. Must be a positive number.`,
+      };
+    }
+    amount = parsed;
+  }
+
   return {
     ok: true,
     query: {
       portfolios,
       benchmarks,
       range: rangeRaw as RangeValue,
+      amount,
     },
   };
 }
