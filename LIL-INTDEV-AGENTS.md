@@ -523,3 +523,43 @@ npm run test:watch    # watch mode
 | Equity parser | `common/parser.ts` | Strict v1 parser — see §3.2 |
 | Query entry point | `common/query.ts` | Full URL parsing (equity + benchmark + range) |
 | Portfolio weights | `common/portfolio.ts` | Equal-weight (1/N) portfolio construction |
+
+---
+
+## 14. Doc Audit Checklist (Task 2)
+
+> Audit performed 2026-02-11. Each item is a concrete drift between docs and current code.
+
+### LIL-INTDEV-AGENTS.md — Outdated Sections
+
+- [ ] **§7 Directory Structure — `Chart.tsx` / `Chart.module.css` marked `○` but exist.** Both files are fully implemented (`components/Chart.tsx` renders an SVG line chart). Update to `✓`.
+- [ ] **§7 Directory Structure — `common/compare-fetcher.ts` missing from listing.** This file exists and is a key pipeline piece (client-side fetch helper). Add it with `✓`.
+- [ ] **§8 Existing Codebase Notes — first bullet outdated.** States "Data fetching and chart rendering are not yet wired into this component." The page (`app/page.tsx`) is now fully wired: parse → fetch (`useCompareData` / `fetchCompareData`) → compute (`normalizeAllSeries`) → render (`Chart.tsx`). Rewrite to reflect current state.
+- [ ] **§8 — "No domain-specific UI components exist yet" is wrong.** `Chart.tsx` exists and is functional. Update list of existing vs. planned components.
+- [ ] **§11.2 v1 Pipeline Status — Render row says "Not started".** The render layer is done: `Chart.tsx` exists, `app/page.tsx` wires fetch → normalize → Chart. Update status to "Done" and revise notes.
+- [ ] **§11.2 — "Next steps for the render layer" block is stale.** All four listed steps are completed. Remove or mark as done.
+- [ ] **§11.3 Wiring Checklist — steps 2-4 described as TODO.** Fetch, compute, and render are all implemented in `app/page.tsx`. Update to reflect completed status.
+- [ ] **§11.3 File map — `Chart.tsx` and `Chart.module.css` listed as `○`.** Both exist. Update to `✓`.
+- [ ] **§11.3 File map — `common/compare-fetcher.ts` not listed.** Add to the Fetch stage row with `✓`.
+
+### SCENARIOS.md — No Structural Drift (Minor Gaps)
+
+- [ ] **A-section / B-section scenario status tracking.** The doc does not indicate which end-to-end scenarios are currently testable vs. aspirational. Consider adding a "status" column or annotation (e.g., A1-A5 chart rendering: implemented; A22 summary table: not yet; A23 hover tooltips: not yet; B1-B15: mostly implemented).
+
+### README.md — Mostly Current
+
+- [ ] **README is accurate.** The "v1 Pipeline Status" table, "Try It" section, and "Known v1 Limitations" all match the current codebase. No changes required.
+
+### package.json — Cosmetic Drift
+
+- [ ] **`name` field is `"srcl"`.** The repo is `www-lil-intdev-portfolio-compare`, but the package name still reflects the original SRCL template. Consider updating to `"www-lil-intdev-portfolio-compare"` or similar.
+- [ ] **`description` field describes SRCL.** The description says "SRCL is an open-source React component and style repository…" which no longer matches the app's purpose. Consider updating to describe the portfolio compare tool.
+
+### Summary
+
+| Area | Severity | Items |
+| --- | --- | --- |
+| **LIL-INTDEV-AGENTS.md** — §7, §8, §11.2, §11.3 | High | 9 items — pipeline status and file listings are wrong (show pre-implementation state) |
+| **SCENARIOS.md** | Low | 1 item — no status tracking on implemented vs. aspirational scenarios |
+| **README.md** | None | Accurate — no changes needed |
+| **package.json** | Low | 2 items — cosmetic name/description from SRCL template |
