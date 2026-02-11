@@ -1072,6 +1072,56 @@ curl -s "http://localhost:10000/api/benchmark?benchmarks=usd&range=1y" | jq '.se
 
 ---
 
+## A28. Try It — three equities vs all benchmarks [Implemented]
+
+> This is the most comprehensive "Try it" URL from the [README](./README.md#try-it). It exercises the full pipeline with multiple equities and all three benchmarks at once.
+
+**Steps:**
+1. Start the dev server: `npm run dev`
+2. Open `http://localhost:10000/?equity=TSMC,AAPL,MSFT&benchmark=gold|eth|usd`
+
+**Expected:**
+- A "PORTFOLIO COMPARE" card is displayed showing:
+  - TSMC (33.3%), AAPL (33.3%), MSFT (33.3%) with "equal weight (1/3)" label
+  - Benchmarks: GOLD, ETH, USD
+  - Range: 1y (default, since range param is omitted)
+- A "PERFORMANCE" card is displayed containing an SVG line chart
+- The chart shows six lines: TSMC, AAPL, MSFT (solid) and Gold, ETH, USD (dashed)
+- USD appears as a flat 0% baseline
+- Each line is a different color; benchmark lines are visually distinct (dashed)
+- Legend shows all six tickers with color swatches
+- Attribution text is visible below the chart
+
+**Verification:**
+```sh
+curl -s "http://localhost:10000/api/market-data?tickers=TSMC,AAPL,MSFT&range=1y" | jq '.series | length'
+# Expected: 3
+
+curl -s "http://localhost:10000/api/benchmark?benchmarks=gold|eth|usd&range=1y" | jq '.series | length'
+# Expected: 3
+```
+
+---
+
+## A29. Try It — landing page with no query params [Implemented]
+
+> Matches the README "More examples" entry for `http://localhost:10000/` — verifies the idle state a first-time user sees.
+
+**Steps:**
+1. Start the dev server: `npm run dev`
+2. Open `http://localhost:10000/`
+
+**Expected:**
+- No error banners are displayed
+- No chart is rendered
+- No loading indicator appears
+- No API fetches are made
+- The page is in an idle/empty state with the default layout
+
+> **Note:** The README "More examples" table describes this as "Landing state — empty, shows example URL". The dedicated `LandingState` component with example links is **not yet implemented** — the current behavior is a blank page with the default layout. This scenario will be updated when `LandingState` is built.
+
+---
+
 ## Benchmark parameter contract
 
 | Benchmark value | Description                              |
@@ -1341,6 +1391,8 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 | **A25** (sanity check) | **Implemented** | Full pipeline works. |
 | **A26** (v2 rejection) | **Implemented** | Parser error displayed in UI. |
 | **A27** (API routes) | **Implemented** | curl-testable. |
+| **A28** (all benchmarks Try It) | **Implemented** | 3 equities vs gold\|eth\|usd — README "Try it" example. |
+| **A29** (landing Try It) | **Implemented** | Idle state for first-time user; `LandingState` component not yet built. |
 | **B1–B5** (success + loading) | **Implemented** | Chart, loading, and summary all work. |
 | **B6–B8** (fetch errors) | **Implemented** | Error banners displayed. |
 | **B9–B11** (invalid/empty/idle) | **Implemented** | Parse errors prevent fetch; idle state works. |
@@ -1392,10 +1444,12 @@ curl -s "http://localhost:10000/api/compare/validate?equity=AAPL:0.5"
 # Expected: HTTP 400, error about reserved colon
 
 # 7. Open in browser — verify each scenario:
-#    http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y  (A1 / A25 — full pipeline)
-#    http://localhost:10000/?equity=AAPL&benchmark=usd                 (A3 — USD baseline)
-#    http://localhost:10000/?equity=AAPL:0.5                           (A26 — v2 rejection)
-#    http://localhost:10000/                                           (A14 — idle state)
-#    http://localhost:10000/?equity=ZZZZZZ                             (A9 — invalid ticker)
-#    http://localhost:10000/?equity=AAPL&benchmark=banana              (A11 — invalid benchmark)
+#    http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y          (A1 / A25 — full pipeline)
+#    http://localhost:10000/?equity=TSMC,AAPL,MSFT&benchmark=gold|eth|usd      (A28 — all benchmarks, README "Try it")
+#    http://localhost:10000/?equity=AAPL,MSFT&equity=GOOG,TSLA&benchmark=gold  (A5 — multi-portfolio)
+#    http://localhost:10000/?equity=AAPL&benchmark=usd                         (A3 — USD baseline)
+#    http://localhost:10000/?equity=AAPL:0.5                                   (A26 — v2 rejection)
+#    http://localhost:10000/                                                   (A14 / A29 — idle state)
+#    http://localhost:10000/?equity=ZZZZZZ                                     (A9 — invalid ticker)
+#    http://localhost:10000/?equity=AAPL&benchmark=banana                      (A11 — invalid benchmark)
 ```
