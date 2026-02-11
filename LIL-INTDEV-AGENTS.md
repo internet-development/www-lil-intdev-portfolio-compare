@@ -17,7 +17,7 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 | **`:` is reserved** | A colon inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** with a clear v2-reserved message. Never silently accept it. |
 | **`=` is reserved** | Same treatment as `:`. |
 
-The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A27 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
+The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A29 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
 
 ---
 
@@ -72,7 +72,7 @@ New contributor or agent? Read these files in order:
 
 | # | File | Why |
 | --- | --- | --- |
-| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A27 define end-to-end behavior. This is the single source of truth — when in doubt, defer here. |
+| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A29 define end-to-end behavior. This is the single source of truth — when in doubt, defer here. |
 | 2 | `app/page.tsx` | **The compare page.** Fully wired client component: URL parsing → data fetch → normalization → chart render. Start here to understand the end-to-end flow. |
 | 3 | `common/parser.ts` | **The v1 query parser.** Strict validation of `equity=` input. Rejects reserved v2 syntax (`:`, `=`). 62 unit tests in `parser.test.ts`. |
 | 4 | `app/api/market-data/route.ts` | **Server-side data proxy.** Fetches equity prices from Yahoo Finance, keeps API keys off the client, 1-hour cache. |
@@ -102,7 +102,7 @@ After these five files you'll understand the full pipeline: URL → parse → fe
 The source of truth for all URL and query-parameter parsing behavior is [`SCENARIOS.md`](./SCENARIOS.md).
 
 - **v1 acceptance contract** — `SCENARIOS.md` sections 1–13 define every valid and invalid input for the `equity=` query parser. Any behavior not listed there is undefined and must be rejected.
-- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A27 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
+- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A29 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
 - **When adding or changing parser behavior**, update `SCENARIOS.md` first, then update tests to match. Tests must cover every scenario listed in the document.
 - **When tests fail**, check `SCENARIOS.md` to determine whether the test or the implementation is wrong. The scenarios file is the contract — implementation follows it, not the other way around.
 
@@ -528,7 +528,7 @@ npm run test:watch    # watch mode
 | `app/api/compare/validate/route.test.ts` | 9 | Server-side validation endpoint |
 
 - Every scenario in `SCENARIOS.md` sections 1–13 has a corresponding unit test.
-- End-to-end scenarios (A1–A27) should have integration or e2e tests as the UI is built out.
+- End-to-end scenarios (A1–A29) should have integration or e2e tests as the UI is built out.
 
 ### 13.3 Entrypoints
 

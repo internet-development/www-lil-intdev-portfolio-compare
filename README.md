@@ -7,7 +7,7 @@ Compare equity portfolio performance against commodity and crypto benchmarks. Bu
 | Document | Purpose |
 | --- | --- |
 | [LIL-INTDEV-AGENTS.md](./LIL-INTDEV-AGENTS.md) | Agent and contributor guidelines — architecture, stack, data flow, directory structure, and v1 constraints |
-| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A27, B1–B15), and the verification checklist |
+| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A29, B1–B15), and the verification checklist |
 
 Start here if you are a new collaborator or agent.
 
