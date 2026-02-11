@@ -1351,6 +1351,8 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 
 # Local Verification Checklist
 
+> **This is the canonical verification procedure.** [README.md → Quick Verification Checklist](./README.md#quick-verification-checklist) contains a 3-item summary for fast smoke-testing. If the two ever diverge, this checklist is the source of truth.
+
 Run these steps to verify the v1 pipeline end-to-end:
 
 ```sh
