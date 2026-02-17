@@ -335,7 +335,7 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 
 ## 11.2 v1 Pipeline Status
 
-> Updated after task 7 end-to-end sanity check.
+> Updated 2026-02-16 — all stages verified complete. Previously updated after task 7 end-to-end sanity check.
 
 | Stage | Status | Key files | Notes |
 | --- | --- | --- | --- |
@@ -550,7 +550,7 @@ npm run test:watch    # watch mode
 
 ## 14. Doc Audit Checklist (Task 2)
 
-> Audit performed 2026-02-11. Each item is a concrete drift between docs and current code.
+> Audit performed 2026-02-11; re-verified 2026-02-16. Each item is a concrete drift between docs and current code.
 
 ### LIL-INTDEV-AGENTS.md — Fixed by Task 3
 
@@ -585,3 +585,38 @@ npm run test:watch    # watch mode
 | **SCENARIOS.md** | ~~Low~~ Fixed | 1 item — status table updated by Task 2 |
 | **README.md** | None | Accurate — no changes needed |
 | **package.json** | ~~Low~~ Fixed | 2 items — name/description updated by prior PRs |
+
+---
+
+## 15. Issue #69 Remaining-Work Closure
+
+> Verified 2026-02-16. All 8 checklist items from [#69](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/69) are complete. Issue body checkboxes have been checked.
+
+### Core product gaps (must-do) — all complete
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Summary table with actual prices | Done | `components/Summary.tsx` — per-ticker start/end prices, return %, dollar value |
+| Dollar-amount simulation (`?amount=`) | Done | `common/query.ts` parses `amount` (default 10000); `Summary.tsx` computes value |
+| README: list 3 SOUL users | Done | `README.md` Contact section lists @sh-marvin, @sh-rebecca, @sh-peterben |
+
+### UI component extraction (should-do) — all complete
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Extract `ErrorState.tsx` | Done | `components/ErrorState.tsx` wraps `AlertBanner` in `Card`; used by `app/page.tsx` |
+| Extract `LandingState.tsx` | Done | `components/LandingState.tsx` shows example URLs + `?amount=` hint; used by `app/page.tsx` |
+
+### Repo hygiene (should-do) — all complete
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Remove dead concept routes | Done | `app/concept-1/`, `app/concept-2/` do not exist |
+| Remove unused `ts-node` | Done | Not in `package.json` devDependencies |
+| Update `package.json` metadata | Done | `name`: `"www-lil-intdev-portfolio-compare"`, description updated |
+
+### Verification
+
+- `npm test` — 98/98 tests passing (4 test files, 0 failures)
+- SCENARIOS.md implementation status table — all A/B scenarios implemented (except A23 hover/tooltip, explicitly deferred)
+- Issue #69 body — all checkboxes checked, last-updated date set to 2026-02-16
