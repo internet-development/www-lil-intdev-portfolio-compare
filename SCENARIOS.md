@@ -631,7 +631,7 @@ The scenarios below cover the full user experience: opening URLs with both `equi
 
 > **Full URL format:** `/?equity=TICKER,TICKER,...&benchmark=gold|eth|usd&range=1y&amount=10000`
 
-Each scenario is a concrete **"do X, observe Y"** step list that a reviewer can execute locally against `http://localhost:10000`. Scenarios marked **[Implemented]** describe behavior that works today. Scenarios marked **[Not yet implemented]** describe expected future v1 behavior — the feature is designed but the UI component does not exist yet.
+Each scenario is a concrete **"do X, observe Y"** step list that a reviewer can execute locally against `http://localhost:10000`. Scenarios marked **[Implemented]** describe behavior that works today. Scenarios marked **[Not yet implemented]** describe expected future v1 behavior — the feature is designed but not yet built (currently only A23: chart hover/tooltip).
 
 ---
 

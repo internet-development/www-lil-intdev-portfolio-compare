@@ -122,7 +122,7 @@ The source of truth for all URL and query-parameter parsing behavior is [`SCENAR
 | Benchmarks | `benchmark=gold\|eth` | `benchmarks=gold\|eth` (in `/api/benchmark`) | `\|` (pipe) | Benchmark names are case-insensitive |
 | Time range | `range=1y` | `range=1y` | — | Same name on both sides. Defaults to `1y` |
 
-> **Note:** The user-facing param is `equity` (singular) and `benchmark` (singular). The API routes accept `tickers` and `benchmarks` (plural). The client-side parser (not yet implemented — see §7) is responsible for this translation. This mapping is stable for v1.
+> **Note:** The user-facing param is `equity` (singular) and `benchmark` (singular). The API routes accept `tickers` and `benchmarks` (plural). The client-side parser (`common/query.ts` → `common/compare-fetcher.ts`) handles this translation. This mapping is stable for v1.
 
 ### 3.2 Parser location
 
@@ -417,15 +417,15 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
  │ 4. RENDER (client)                          │
  │                                             │
  │  a. Chart — line chart of normalized series │
- │     components/Chart.tsx  (to be created)   │
- │     <svg> or <canvas>, one line per series  │
+ │     components/Chart.tsx  (implemented)     │
+ │     <svg>, one line per series              │
  │     X-axis: date, Y-axis: % change         │
  │     Benchmarks dashed, equities solid       │
  │                                             │
  │  b. Summary — tabular performance stats     │
- │     components/Summary.tsx (to be created)  │
+ │     components/Summary.tsx (implemented)    │
  │     Per-ticker: start price, end price,     │
- │     total return %, annualized return %     │
+ │     total return %, simulated dollar value  │
  │                                             │
  │  c. States:                                 │
  │     Loading  → BlockLoader / skeleton       │
@@ -577,11 +577,18 @@ npm run test:watch    # watch mode
 - [x] **`name` field updated.** Now `"www-lil-intdev-portfolio-compare"`.
 - [x] **`description` field updated.** Now describes the portfolio compare tool.
 
+### LIL-INTDEV-AGENTS.md + SCENARIOS.md — Fixed by Task 2 (second pass)
+
+- [x] **§3.1 — Note said "client-side parser (not yet implemented — see §7)".** Parser has been implemented since task 7. Updated to reference `common/query.ts` → `common/compare-fetcher.ts`.
+- [x] **§11.3 Dataflow diagram — Chart.tsx and Summary.tsx marked "(to be created)".** Both exist. Updated to "(implemented)". Also corrected Summary description from "annualized return %" to "simulated dollar value" to match actual implementation.
+- [x] **SCENARIOS.md — Preamble about "[Not yet implemented]" scenarios was generic.** Updated to note that only A23 (chart hover/tooltip) remains unimplemented.
+
 ### Summary
 
 | Area | Severity | Items |
 | --- | --- | --- |
 | **LIL-INTDEV-AGENTS.md** — §7, §8, §11.2, §11.3 | ~~High~~ Fixed | 9 items — all resolved by Task 3 |
-| **SCENARIOS.md** | ~~Low~~ Fixed | 1 item — status table updated by Task 2 |
+| **LIL-INTDEV-AGENTS.md** — §3.1, §11.3 diagram | ~~Low~~ Fixed | 3 items — resolved by Task 2 (second pass) |
+| **SCENARIOS.md** | ~~Low~~ Fixed | 2 items — status table (Task 2) + preamble (Task 2 second pass) |
 | **README.md** | None | Accurate — no changes needed |
 | **package.json** | ~~Low~~ Fixed | 2 items — name/description updated by prior PRs |
