@@ -447,7 +447,7 @@ Each file below is tagged with its pipeline stage. When making changes, limit PR
 | Stage | File | Exists | Role |
 | --- | --- | --- | --- |
 | **Parse** | `common/parser.ts` | ✓ | Strict v1 equity parser (token validation, reserved-char rejection) |
-| **Parse** | `common/query.ts` | ✓ | Entry point: `parseCompareQuery(searchParams) → QueryResult` |
+| **Parse** | `common/query.ts` | ✓ | Entry point: `parseCompareQuery(searchParams) → QueryResult`. Parses equity, benchmark, range, and amount. |
 | **Parse** | `common/portfolio.ts` | ✓ | `buildEqualWeightPortfolio()`, `computePortfolioReturn()` |
 | **Parse** | `common/types.ts` | ✓ | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue` |
 | **Fetch** | `common/compare-fetcher.ts` | ✓ | Client-side fetch helper — calls `/api/market-data` + `/api/benchmark`, returns typed `SeriesData[]` |
@@ -600,3 +600,38 @@ npm run test:watch    # watch mode
 | **SCENARIOS.md** | ~~Low~~ Fixed | 2 items — status table (Task 2) + preamble (Task 2 second pass) |
 | **README.md** | None | Accurate — no changes needed |
 | **package.json** | ~~Low~~ Fixed | 2 items — name/description updated by prior PRs |
+
+---
+
+## 15. v1 Completion Status
+
+> Updated 2026-02-17 — all remaining work resolved. Plan #100 fully executed.
+
+### Remaining-work resolution (#69)
+
+Issue [#69](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/69) ("Feedback from #68: remaining work identified") tracked all outstanding v1 work items. **All items are now complete and #69 is closed.**
+
+| Category | Items | Status | PRs |
+| --- | --- | --- | --- |
+| **Core product gaps** | Summary table, dollar-amount simulation, README maintainers | Done | #101, #103, #106 |
+| **UI component extraction** | ErrorState.tsx, LandingState.tsx | Done | #103, #106 |
+| **Repo hygiene** | Dead concept routes, ts-node removal, package.json metadata | Done | Prior PRs |
+| **Doc sync** | SCENARIOS.md, LIL-INTDEV-AGENTS.md drift corrections | Done | #85–#93, #108, #119 |
+
+### Finish sentinel (#99)
+
+Issue [#99](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/99) was the "LIL INTDEV FINISHED" sentinel. It flagged that the workspace was not actually complete while #69 remained open. **#99 is now closed** — rolled into plan #100.
+
+### Plan #100 execution summary
+
+| Task | Description | Status |
+| --- | --- | --- |
+| Task 1 | Make #69 actionable (restate checklist) | Completed |
+| Task 2 | Execute remaining-work items | Completed |
+| Task 3 | Update SCENARIOS.md for shipped behavior | Completed |
+| Task 4 | Update LIL-INTDEV-AGENTS.md for current architecture | Completed |
+| Task 5 | Close loop: close #69 and re-assert completion | Completed |
+
+### Open issues (not v1 blockers)
+
+Remaining open issues are `memo`-labeled items (v2 weight syntax pinning), `discussion` threads, and `plan` tracking — none are v1 work blockers. The v1 product is complete: parse → fetch → normalize → chart + summary, with 98 passing tests covering SCENARIOS.md §1–§13.
