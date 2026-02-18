@@ -22,7 +22,7 @@ When the parser processes the `equity` param(s), checks run in this order per po
 4. **Per-token, left to right:**
    a. **Trim whitespace** (leading/trailing)
    b. **Empty token** — reject if token is empty after trim
-   c. **Reserved characters** — reject if token contains `:` or `=` (v2-reserved)
+   c. **Reserved characters** — reject if token contains `:` or `=` (v2-reserved). For `:`, use pinned error from #117 (see §7.7)
    d. **Illegal characters** — reject if token contains chars outside `[A-Za-z0-9.\-]`
    e. **Must start with letter** — reject if first char is not `[A-Za-z]`
    f. **Max length** — reject if token length > `MAX_TICKER_LENGTH` (10)
@@ -254,14 +254,16 @@ Then an error is returned with message: "Empty ticker at position 1"
 
 ## 7. Reserved Syntax Rejection (`:` and `=` — v2 Weight Syntax)
 
-v1 is **strictly equal-weight**. The colon (`:`) and equals (`=`) characters are reserved for v2 weight syntax (e.g. `equity=AAPL:0.6,MSFT:0.4`). Any occurrence of `:` or `=` inside a ticker token — literal or URL-encoded (`%3A`, `%3D`) — must be rejected with a message that explains it is reserved.
+v1 is **strictly equal-weight**. The colon (`:`) and equals (`=`) characters are reserved for v2 weight syntax (e.g. `equity=AAPL:0.6,MSFT:0.4`). Any occurrence of `:` or `=` inside a ticker token — literal or URL-encoded (`%3A`, `%3D`) — must be rejected. For colons, the **pinned v1 error message** (established in #117/#114) is:
+
+> `Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".`
 
 ### 7.1 Colon inside a token is rejected
 
 ```
 Given the URL query string is "?equity=AAPL:0.5"
 When the v1 query parser processes the input
-Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 ```
 
 ### 7.2 URL-encoded colon (%3A) inside a token is rejected
@@ -269,7 +271,7 @@ Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0
 ```
 Given the URL query string is "?equity=AAPL%3A0.5"
 When the v1 query parser processes the input
-Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 ```
 
 > **Implementation note:** URL decoding happens before parsing, so `%3A` becomes `:` and is caught by the same colon-rejection rule.
@@ -297,7 +299,7 @@ Then an error is returned with message: "Invalid character '=' in ticker 'AAPL=0
 ```
 Given the URL query string is "?equity=AAPL,MSFT:0.3,GOOG"
 When the v1 query parser processes the input
-Then an error is returned with message: "Invalid character ':' in ticker 'MSFT:0.3' — colons are reserved for v2 weight syntax"
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 ```
 
 ### 7.5 Semicolon is rejected
@@ -315,6 +317,30 @@ Given the URL query string is "?equity=AAPL|MSFT"
 When the v1 query parser processes the input
 Then an error is returned with message: "Invalid character '|' in ticker 'AAPL|MSFT'"
 ```
+
+### 7.7 Weight syntax with single ticker is rejected (v1 contract — #117)
+
+> **Pinned error string:** The user-facing error for any `:` weight syntax MUST be exactly the message below. This was established in #117/#114 and is the canonical v1 rejection message for weight syntax.
+
+```
+Given the URL query string is "?equity=AAPL:0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+And no API fetch is made
+And no chart is rendered
+```
+
+### 7.8 Weight syntax with multiple tickers is rejected (v1 contract — #117)
+
+```
+Given the URL query string is "?equity=AAPL:0.5,MSFT"
+When the v1 query parser processes the input
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+And no API fetch is made
+And no chart is rendered
+```
+
+> **Implementation note:** The `:` is detected during per-token validation (step 4c in the validation pipeline). The error message is the same regardless of whether the colon appears in the first or a subsequent token — the pinned string from #117 takes precedence over the per-character error format used in §7.1–7.4. Scenarios 7.1–7.4 are updated to use this canonical message. See also #114, #118, #121.
 
 ---
 
@@ -424,7 +450,7 @@ And no error is returned
 ```
 Given the URL query string is "?equity=MSFT%3A0.5"
 When the v1 query parser processes the input
-Then an error is returned with message: "Invalid character ':' in ticker 'MSFT:0.5' — colons are reserved for v2 weight syntax"
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 ```
 
 ---
@@ -517,7 +543,7 @@ Then an error is returned with message: "Empty ticker at position 21"
 ```
 Given the URL query string is "?equity=AAPL:0.5,AAPL"
 When the v1 query parser processes the input
-Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 ```
 
 ### 12.4 Multi-portfolio with per-portfolio error
@@ -525,7 +551,7 @@ Then an error is returned with message: "Invalid character ':' in ticker 'AAPL:0
 ```
 Given the URL query string is "?equity=AAPL,MSFT&equity=GOOG:0.5"
 When the v1 query parser processes the input
-Then an error is returned with message: "Invalid character ':' in ticker 'GOOG:0.5' — colons are reserved for v2 weight syntax"
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 ```
 
 > Note: The parser should reject on the **first** error encountered during left-to-right, portfolio-by-portfolio processing. It does not accumulate multiple errors.
@@ -571,13 +597,14 @@ v2 will introduce **custom per-ticker weights** using the colon syntax:
 
 In v1, all of the following are **explicitly rejected**:
 
-| Input pattern         | Rejection reason                                              |
-| --------------------- | ------------------------------------------------------------- |
-| `AAPL:0.5`            | Colon reserved for v2 weight syntax                          |
-| `AAPL%3A0.5`          | URL-encoded colon — same rule applies after decoding         |
-| `AAPL:60,MSFT:40`     | Colon reserved for v2 weight syntax                          |
-| `AAPL=0.5`            | Equals sign reserved                                         |
-| `AAPL%3D0.5`          | URL-encoded equals — same rule applies after decoding        |
+| Input pattern         | Rejection reason                                              | Pinned error message (#117)                                    |
+| --------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
+| `AAPL:0.5`            | Colon reserved for v2 weight syntax                          | `Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".` |
+| `AAPL%3A0.5`          | URL-encoded colon — same rule applies after decoding         | *(same as above)*                                              |
+| `AAPL:60,MSFT:40`     | Colon reserved for v2 weight syntax                          | *(same as above)*                                              |
+| `AAPL:0.5,MSFT`       | Colon in first token with valid second token                 | *(same as above)*                                              |
+| `AAPL=0.5`            | Equals sign reserved                                         | `Invalid character '=' in ticker 'AAPL=0.5' — equals signs are reserved` |
+| `AAPL%3D0.5`          | URL-encoded equals — same rule applies after decoding        | *(same as above)*                                              |
 
 **v2 design notes (out of scope for v1 implementation):**
 
@@ -614,7 +641,7 @@ In v1, all of the following are **explicitly rejected**:
 | Duplicates (within portfolio)  | Rejected (post-normalization)                        |
 | Duplicates (across portfolios) | Allowed                                              |
 | Empty tokens                   | Rejected with position                               |
-| Reserved chars (`:`, `=`)      | Rejected with v2 forward-compat message              |
+| Reserved chars (`:`, `=`)      | Rejected — `:` uses pinned message from #117: `Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".` |
 | URL-encoded reserved (`%3A`, `%3D`) | Rejected (decoded before parsing)               |
 | Other special chars            | Rejected                                             |
 | Unknown params                 | Silently ignored                                     |
@@ -1060,7 +1087,7 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ,MSFT&range=1
 
 **Expected:**
 - An "Invalid query" error banner is displayed:
-  `"Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"`
+  `"Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT"."`
 - No portfolio summary is displayed
 - No API fetch is made
 - No chart is rendered
@@ -1353,7 +1380,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://localhost:10000/api/benchmark?ben
 
 **Expected:**
 - The client-side parser rejects the query immediately
-- An "Invalid query" error banner shows: `"Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax"`
+- An "Invalid query" error banner shows: `"Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT"."`
 - No fetch is made to `/api/market-data` or `/api/benchmark` (parse error prevents fetch)
 - No loading indicator is shown
 
@@ -1515,7 +1542,7 @@ curl -s "http://localhost:10000/api/compare/validate?equity=AAPL,MSFT&benchmark=
 # Expected: HTTP 200 with validation result
 
 curl -s "http://localhost:10000/api/compare/validate?equity=AAPL:0.5"
-# Expected: HTTP 400, error about reserved colon
+# Expected: HTTP 400, error: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
 
 # 7. Open in browser — verify each scenario:
 #    http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y          (A1 / A25 — full pipeline)
