@@ -17,7 +17,7 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 | **`:` is reserved** | A colon inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** with a clear v2-reserved message. Never silently accept it. |
 | **`=` is reserved** | Same treatment as `:`. |
 
-The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A27 for end-to-end behavior. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
+The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A30 for end-to-end behavior, B1–B15 for UI wiring. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
 
 ---
 
@@ -72,7 +72,7 @@ New contributor or agent? Read these files in order:
 
 | # | File | Why |
 | --- | --- | --- |
-| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A29 define end-to-end behavior. This is the single source of truth — when in doubt, defer here. |
+| 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A30 define end-to-end behavior. Sections B1–B15 define UI wiring scenarios. This is the single source of truth — when in doubt, defer here. |
 | 2 | `app/page.tsx` | **The compare page.** Fully wired client component: URL parsing → data fetch → normalization → chart render. Start here to understand the end-to-end flow. |
 | 3 | `common/parser.ts` | **The v1 query parser.** Strict validation of `equity=` input. Rejects reserved v2 syntax (`:`, `=`). 62 unit tests in `parser.test.ts`. |
 | 4 | `app/api/market-data/route.ts` | **Server-side data proxy.** Fetches equity prices from Yahoo Finance, keeps API keys off the client, 1-hour cache. |
@@ -86,7 +86,7 @@ Before submitting any PR, run through the verification loop to confirm nothing i
 
 1. **Quick check (3 items):** [`README.md` → Quick Verification Checklist](./README.md#quick-verification-checklist) — happy path, error path, unit tests.
 2. **Full procedure:** [`SCENARIOS.md` → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist) — curl-based API tests, validation endpoint, and browser scenarios. This is the authoritative checklist; when in doubt, follow SCENARIOS.md.
-3. **Acceptance criteria:** [`SCENARIOS.md`](./SCENARIOS.md) sections A1–A29 and B1–B15 define every observable behavior. The [Scenario Implementation Status](./SCENARIOS.md#scenario-implementation-status) table shows which scenarios are testable today.
+3. **Acceptance criteria:** [`SCENARIOS.md`](./SCENARIOS.md) sections A1–A30 and B1–B15 define every observable behavior. The [Scenario Implementation Status](./SCENARIOS.md#scenario-implementation-status) table shows which scenarios are testable today.
 
 ---
 
@@ -110,7 +110,7 @@ Before submitting any PR, run through the verification loop to confirm nothing i
 The source of truth for all URL and query-parameter parsing behavior is [`SCENARIOS.md`](./SCENARIOS.md).
 
 - **v1 acceptance contract** — `SCENARIOS.md` sections 1–13 define every valid and invalid input for the `equity=` query parser. Any behavior not listed there is undefined and must be rejected.
-- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A27 cover the full user experience including benchmarks, time ranges, error states, and auth-free operation.
+- **End-to-end scenarios** — `SCENARIOS.md` sections A1–A30 cover the full user experience including benchmarks, time ranges, error states, auth-free operation, and dollar-amount simulation.
 - **When adding or changing parser behavior**, update `SCENARIOS.md` first, then update tests to match. Tests must cover every scenario listed in the document.
 - **When tests fail**, check `SCENARIOS.md` to determine whether the test or the implementation is wrong. The scenarios file is the contract — implementation follows it, not the other way around.
 
@@ -121,16 +121,17 @@ The source of truth for all URL and query-parameter parsing behavior is [`SCENAR
 | Equities | `equity=AAPL,MSFT` | `tickers=AAPL,MSFT` (in `/api/market-data`) | `,` (comma) | Client parser validates `equity=`, then forwards as `tickers=` to the API route |
 | Benchmarks | `benchmark=gold\|eth` | `benchmarks=gold\|eth` (in `/api/benchmark`) | `\|` (pipe) | Benchmark names are case-insensitive |
 | Time range | `range=1y` | `range=1y` | — | Same name on both sides. Defaults to `1y` |
+| Amount | `amount=10000` | — (client-side only) | — | Simulated lump-sum investment. Defaults to `10000`. Affects Summary table only, not chart. |
 
 > **Note:** The user-facing param is `equity` (singular) and `benchmark` (singular). The API routes accept `tickers` and `benchmarks` (plural). The client-side parser (`common/query.ts` → `common/compare-fetcher.ts`) handles this translation. This mapping is stable for v1.
 
 ### 3.2 Parser location
 
-The client-side query parser lives at `common/parser.ts`. It is responsible for:
+The client-side query parser lives at `common/parser.ts` (equity validation) and `common/query.ts` (full query entry point). Together they are responsible for:
 
-1. Reading `equity=`, `benchmark=`, and `range=` from the browser URL
-2. Validating inputs per SCENARIOS.md sections 1–13
-3. Returning either a parsed result or a fail-fast error
+1. Reading `equity=`, `benchmark=`, `range=`, and `amount=` from the browser URL
+2. Validating inputs per SCENARIOS.md sections 1–13 (equity), benchmark/range/amount contracts
+3. Returning either a parsed `CompareQuery` or a fail-fast error
 4. Translating param names before calling the API routes
 
 ---
@@ -241,6 +242,7 @@ app/
     market-data/route.ts   ✓ proxies equity price requests (Yahoo Finance)
     benchmark/route.ts     ✓ proxies benchmark price requests (Yahoo Finance + USD baseline)
     compare/validate/route.ts ✓ server-side query validation endpoint
+    compare/validate/route.test.ts ✓ 9 tests for the validation endpoint
 common/
   constants.ts             ✓ app-wide constants (API URLs, limits)
   utilities.ts             ✓ utility functions
@@ -249,10 +251,13 @@ common/
   server.ts                ✓ server-side utilities
   position.ts              ✓ position utilities
   market-data.ts           ✓ normalization helpers (normalizeSeries, normalizeAllSeries)
-  types.ts                 ✓ shared TypeScript interfaces (PricePoint, SeriesData, RangeValue, BenchmarkValue)
-  parser.ts                ✓ v1 strict equity parser (see §3.2, tested in parser.test.ts)
-  query.ts                 ✓ full query entry point: equity + benchmark + range parsing
+  types.ts                 ✓ shared TypeScript interfaces (PricePoint, SeriesData, RangeValue, BenchmarkValue) + validation constants (VALID_RANGES, VALID_BENCHMARKS)
+  parser.ts                ✓ v1 strict equity parser (see §3.2)
+  parser.test.ts           ✓ 62 unit tests covering SCENARIOS.md §1–§13
+  query.ts                 ✓ full query entry point: equity + benchmark + range + amount parsing
+  query.test.ts            ✓ 16 unit tests for full query parsing
   portfolio.ts             ✓ equal-weight portfolio construction (1/N weights)
+  portfolio.test.ts        ✓ 11 unit tests for portfolio construction and returns
   compare-fetcher.ts       ✓ client-side fetch helper — calls /api/market-data + /api/benchmark
 components/
   Chart.tsx                ✓ SVG line chart (normalized % change vs time)
@@ -355,7 +360,7 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 
 ```
  URL in browser address bar
- /?equity=AAPL,MSFT&benchmark=gold&range=1y
+ /?equity=AAPL,MSFT&benchmark=gold&range=1y&amount=10000
               │
               ▼
  ┌─────────────────────────────────────────────┐
@@ -368,6 +373,7 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
  │      portfolios: WeightedPortfolio[]        │
  │      benchmarks: BenchmarkValue[]           │
  │      range: RangeValue                      │
+ │      amount: number                         │
  │    }                                        │
  └───────────────┬─────────────────────────────┘
                  │ on success
@@ -467,6 +473,7 @@ The client-side parser reads user-facing param names; the API routes accept diff
 | `equity=AAPL,MSFT` | `tickers=AAPL,MSFT` | Rename `equity` → `tickers`; value unchanged |
 | `benchmark=gold\|eth` | `benchmarks=gold\|eth` | Rename `benchmark` → `benchmarks`; value unchanged |
 | `range=1y` | `range=1y` | Same name, pass through |
+| `amount=10000` | — (client-side only) | Not sent to API routes; used by Summary table for dollar-value simulation |
 
 ### Wiring checklist for `app/page.tsx`
 
@@ -525,25 +532,26 @@ npm run test:watch    # watch mode
 | Test file | Tests | Covers |
 | --- | --- | --- |
 | `common/parser.test.ts` | 62 | SCENARIOS.md §1–§13 (all v1 parser scenarios) |
-| `common/query.test.ts` | 16 | Full query parsing: equity + benchmark + range |
+| `common/query.test.ts` | 16 | Full query parsing: equity + benchmark + range + amount |
 | `common/portfolio.test.ts` | 11 | Equal-weight construction + weighted return computation |
 | `app/api/compare/validate/route.test.ts` | 9 | Server-side validation endpoint |
 
 - Every scenario in `SCENARIOS.md` sections 1–13 has a corresponding unit test.
-- End-to-end scenarios (A1–A27) should have integration or e2e tests as the UI is built out.
+- End-to-end scenarios (A1–A30, B1–B15) should have integration or e2e tests as the UI is built out.
 
 ### 13.3 Entrypoints
 
 | What | File | Notes |
 | --- | --- | --- |
-| Main page | `app/page.tsx` | Compare page — parses URL, shows portfolio summary card |
+| Main page | `app/page.tsx` | Compare page — parses URL, fetches data, renders chart + summary |
 | Root layout | `app/layout.tsx` | Providers wrapper, `theme-light` body class |
 | Equity data API | `app/api/market-data/route.ts` | GET `?tickers=…&range=…` |
 | Benchmark data API | `app/api/benchmark/route.ts` | GET `?benchmarks=…&range=…` |
-| Shared types | `common/types.ts` | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue` |
+| Shared types | `common/types.ts` | `PricePoint`, `SeriesData`, `RangeValue`, `BenchmarkValue`, `VALID_RANGES`, `VALID_BENCHMARKS` |
 | Normalization | `common/market-data.ts` | `normalizeSeries()`, `normalizeAllSeries()` |
 | Equity parser | `common/parser.ts` | Strict v1 parser — see §3.2 |
-| Query entry point | `common/query.ts` | Full URL parsing (equity + benchmark + range) |
+| Query entry point | `common/query.ts` | Full URL parsing (equity + benchmark + range + amount) |
+| Fetch helper | `common/compare-fetcher.ts` | Client-side fetch — calls `/api/market-data` + `/api/benchmark` |
 | Portfolio weights | `common/portfolio.ts` | Equal-weight (1/N) portfolio construction |
 
 ---
