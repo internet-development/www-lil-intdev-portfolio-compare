@@ -517,6 +517,8 @@ Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold` to verify the app
 | `npm run build` | `next build` | Production build |
 | `npm run start` | `PORT=10000 next start` | Start production server on port 10000 |
 | `npm run lint` | `next lint` | Run ESLint via Next.js |
+| `npm test` | `vitest run` | Run all unit tests (single run) |
+| `npm run test:watch` | `vitest` | Run tests in watch mode |
 
 ### 13.2 Tests
 
