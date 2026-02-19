@@ -64,6 +64,31 @@ These constraints define v1 and **must not be violated** without a new version b
 | **`:` is reserved for v2 weight syntax** | The colon character (`:`) inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** in v1 with a clear forward-compat message. **Do not silently accept, strip, or ignore colons.** This reserves the syntax for the v2 weighted-portfolio feature. See SCENARIOS.md §7 and §14, and [`docs/weights-v2.md`](./docs/weights-v2.md) for the full v2 contract. | Issue [#10](https://github.com/internet-development/www-lil-intdev-portfolio-compare/issues/10), scenario 7.1 |
 | **`=` is also reserved** | Same treatment as `:`. Reject with a clear message, never silently accept. | Scenario 7.3 |
 
+### Auth-Free and Data-Source Constraints
+
+The app **must not require any user-provided API keys, logins, or auth walls**. All data fetching uses free, public-tier endpoints with server-side keys invisible to the visitor (scenario A16).
+
+| Constraint | Detail |
+| --- | --- |
+| **No user authentication** | No login flows, no OAuth, no API-key prompts. The app works the instant a URL is opened. |
+| **Allowed data sources** | Free/public endpoints only. The current provider is Yahoo Finance (unofficial v8 chart endpoint — no key required). See §4.2 for the provider hierarchy and §4.2.1 for discovered constraints. |
+| **Server-side keys only** | If a future provider requires a key, it lives in a server-side env var (`MARKET_DATA_API_KEY`) and is never exposed to the client. See §6. |
+| **Caching** | API route responses are cached for 1 hour (`revalidate: 3600`). No external cache (Redis, etc.) for MVP. See §5. |
+| **Graceful degradation** | When the data source is unavailable (429, 5xx, network error), the app displays a clear error state and keeps the URL visible so the user can retry. See scenarios A19, B6–B8. |
+
+### Reserved v2 Query Parameters
+
+The following query parameters and syntaxes are **reserved for v2** and must not be implemented in v1. If encountered, the parser either rejects them (for `:` and `=`) or ignores them (for unknown params per scenario 11.1):
+
+| Reserved syntax | Purpose | v1 behavior |
+| --- | --- | --- |
+| `TICKER:WEIGHT` (`:` in equity token) | Per-ticker weight assignment | **Rejected** — pinned error from [SCENARIOS.md §7](./SCENARIOS.md): `"Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."` |
+| `TICKER=WEIGHT` (`=` in equity token) | Alternate weight syntax | **Rejected** — `"Invalid character '=' in ticker … — equals signs are reserved"` |
+| `weights=` / `w=` param | Standalone weight specification | **Ignored** (unknown params are silently ignored per scenario 11.1). Reserved for possible v2 use. |
+| `rebalance=` param | Periodic rebalancing frequency | **Ignored** (unknown param). Reserved for v3 — see [`docs/weights-v2.md` §5](./docs/weights-v2.md). |
+
+> **Cross-reference:** The full v2 weights contract (token grammar, validation rules, error messages, rebalancing semantics) is specified in [`docs/weights-v2.md`](./docs/weights-v2.md). The v1 rejection behavior is defined in [SCENARIOS.md §7 and §14](./SCENARIOS.md).
+
 ---
 
 ## Where to Start
@@ -334,7 +359,7 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 | [`SCENARIOS.md` §7](./SCENARIOS.md) | v1 tests that enforce `:` and `=` rejection |
 | [`common/parser.ts`](./common/parser.ts) | v1 implementation — rejects `:` with v2-reserved message |
 
-**For agents:** Do not implement v2 weight parsing. The v1 parser must continue to reject `:` with the message `"colons are reserved for v2 weight syntax"`. When v2 implementation begins, start from `docs/weights-v2.md` as the contract.
+**For agents:** Do not implement v2 weight parsing. The v1 parser must continue to reject `:` with the pinned error message: `"Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."` (established in #117/#114). When v2 implementation begins, start from `docs/weights-v2.md` as the contract. See also the [Reserved v2 Query Parameters](#reserved-v2-query-parameters) table in §1 for the full list of reserved syntaxes and params (`weights=`, `rebalance=`, etc.).
 
 ---
 
