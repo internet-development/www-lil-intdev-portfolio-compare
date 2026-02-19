@@ -67,6 +67,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No valid tickers provided' }, { status: 400 });
   }
 
+  // Reject reserved `:` syntax at the API boundary (v1 contract — #117)
+  for (const t of tickerList) {
+    if (t.includes(':')) {
+      return NextResponse.json(
+        { error: 'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".' },
+        { status: 400 }
+      );
+    }
+  }
+
   const yahooParams = RANGE_TO_YAHOO[range];
 
   try {
