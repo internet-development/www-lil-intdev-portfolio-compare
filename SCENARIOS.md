@@ -3,15 +3,26 @@
 Strict, testable scenarios for the `equity=` URL query parameter parser.
 These define the **v1 acceptance contract** — any behavior not listed here is undefined and must be rejected.
 
-> **v1 is equal-weight only.** Every ticker in a portfolio receives weight 1/N. Custom weights are reserved for v2 (see §7 and §14).
+> **v1 is equal-weight only.** Every ticker in a portfolio receives weight 1/N. Custom weights are reserved for v2 (see [§7](#v1-reserved-syntax-rejection) and [§14](#v2-weight-syntax)).
 
 > **URL format (single portfolio):** `?equity=TICKER,TICKER,...`
 > **URL format (multi-portfolio):** `?equity=TICKER,TICKER,...&equity=TICKER,TICKER,...`
+
+<a id="v1-parsing-invariants"></a>
+### v1 Parsing Invariants
+
+The following invariants are pinned by the v1 contract and enforced by unit tests. Any change to these is a breaking change. This section is the SCENARIOS.md counterpart to the [v1 Parsing Invariants (Contract)](./LIL-INTDEV-AGENTS.md#v1-parsing-invariants-contract) section in the agent doc.
+
+- **Exact error strings are pinned.** The colon-rejection message (`"Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."`) is established in #117/#114 and tested with exact-match assertions (`.toBe()`). See [§7](#v1-reserved-syntax-rejection) (especially §7.7–§7.10) for the full specification.
+- **Reserved-character rejection covers all entry points.** Both the client-side parser (`common/parser.ts`) and the server-side validate endpoint (`app/api/compare/validate/route.ts`) reject `:` and `=` with the same pinned messages. See [§7.9](#v1-colon-entry-points) for the entry-point coverage table.
+- **Validation pipeline order is the contract.** The fail-fast, left-to-right, first-error-wins pipeline defined [below](#v1-validation-pipeline) is normative. Implementation must follow it.
+- **Test assertion strategy:** Colon-rejection tests use exact match (`.toBe()`), not substring matching. See [§7.10](#v1-test-assertion-strategy) for the rationale and policy.
 
 ### Canonical parameter name
 
 The user-facing query parameter for specifying equities is **`equity`** (singular). This was chosen over alternatives (`portfolios`, `tickers`, `stocks`) for consistency with the codebase and URL brevity. The API route internally uses `tickers` (see LIL-INTDEV-AGENTS.md §3.1), but the client-side parser reads `equity` from the browser URL.
 
+<a id="v1-validation-pipeline"></a>
 ### Validation pipeline order
 
 When the parser processes the `equity` param(s), checks run in this order per portfolio, and the **first failure stops all processing** (fail-fast):
@@ -252,6 +263,7 @@ Then an error is returned with message: "Empty ticker at position 1"
 
 ---
 
+<a id="v1-reserved-syntax-rejection"></a>
 ## 7. Reserved Syntax Rejection (`:` and `=` — v2 Weight Syntax)
 
 v1 is **strictly equal-weight**. The colon (`:`) and equals (`=`) characters are reserved for v2 weight syntax (e.g. `equity=AAPL:0.6,MSFT:0.4`). Any occurrence of `:` or `=` inside a ticker token — literal or URL-encoded (`%3A`, `%3D`) — must be rejected. For colons, the **pinned v1 error message** (established in #117/#114) is:
@@ -342,6 +354,7 @@ And no chart is rendered
 
 > **Implementation note:** The `:` is detected during per-token validation (step 4c in the validation pipeline). The error message is the same regardless of whether the colon appears in the first or a subsequent token — the pinned string from #117 takes precedence over the per-character error format used in §7.1–7.4. Scenarios 7.1–7.4 are updated to use this canonical message. See also #114, #118, #121.
 
+<a id="v1-colon-entry-points"></a>
 ### 7.9 Colon rejection applies to all entry points that accept user tickers (#132)
 
 The `:` rejection contract applies **everywhere user-entered tickers or portfolios are parsed**. In v1, the only query parameter that accepts ticker input is `equity=`. This parameter is parsed in two code paths:
@@ -369,6 +382,7 @@ curl -s "http://localhost:10000/api/compare/validate?equity=AAPL:0.6,MSFT:0.4" |
 
 **Why `:` is rejected:** The colon character is **reserved for v2 weight syntax** (e.g., `equity=AAPL:0.6,MSFT:0.4`). Rejecting it in v1 ensures forward compatibility — users receive a clear message explaining the v2 reservation rather than a confusing parse failure. See §14 for the full v2 design and [`docs/weights-v2.md`](./docs/weights-v2.md) for the detailed v2 contract.
 
+<a id="v1-test-assertion-strategy"></a>
 ### 7.10 Test assertion strategy for the pinned error string (#132)
 
 Tests for the `:` rejection use **exact string equality** (`.toBe()`), **not** substring matching (`.toContain()`). This is the default and recommended approach.
@@ -625,6 +639,7 @@ And the position is relative to that portfolio's token list
 
 ---
 
+<a id="v2-weight-syntax"></a>
 ## 14. v2 Weight Syntax — Explicitly Reserved
 
 v2 will introduce **custom per-ticker weights** using the colon syntax:
@@ -1504,13 +1519,14 @@ curl -s "http://localhost:10000/api/market-data?tickers=AAPL,ZZZZZZ&range=1y"
 ---
 ---
 
+<a id="scenario-implementation-status"></a>
 # Scenario Implementation Status
 
 Quick reference for which scenarios are testable today vs. awaiting UI work.
 
 | Scenario | Status | Notes |
 | --- | --- | --- |
-| **§1–§13** (parser) | **98 unit tests passing** | Run `npm test` to verify. All parser scenarios have dedicated tests. |
+| **§1–§13** (parser) | **106 unit tests passing** | Run `npm test` to verify. All parser scenarios have dedicated tests. |
 | **§14** (v2 reserved) | **Tested** | Parser rejects `:` and `=` with v2-reserved messages. |
 | **A1–A8** (happy path) | **Implemented** | Chart renders, attribution visible, all ranges work. |
 | **A9–A10** (invalid ticker) | **Implemented** | Fetch error displayed, no partial render. |
@@ -1540,6 +1556,7 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 
 ---
 
+<a id="local-verification-checklist"></a>
 # Local Verification Checklist
 
 > **This is the canonical "Try it" procedure.** README's [Quick Verification Checklist](./README.md#quick-verification-checklist) is a 3-item summary that points here. If the two ever diverge, this checklist is authoritative.
@@ -1552,7 +1569,7 @@ npm install
 
 # 2. Run unit tests (parser + query + portfolio + validate endpoint)
 npm test
-# Expected: 98 tests passing, 0 failures
+# Expected: 106 tests passing, 0 failures
 
 # 3. Start the dev server
 npm run dev
