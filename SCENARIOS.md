@@ -677,6 +677,54 @@ In v1, all of the following are **explicitly rejected**:
 
 ---
 
+## 15. Validation Pipeline Order — Step Priority (Drift Guardrail)
+
+The [validation pipeline](#v1-validation-pipeline) defines a strict step ordering (4a → 4h). When a single token violates multiple rules simultaneously, the parser **must** report the error from the **earliest** step in the pipeline. These scenarios pin that ordering so refactors cannot silently reorder checks.
+
+### 15.1 Reserved colon (step 4c) fires before starts-with-letter (step 4e)
+
+```
+Given the URL query string is "?equity=1AAPL:0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+And the error is NOT "Invalid ticker format: '1AAPL:0.5' — must start with a letter"
+```
+
+> **Why this matters:** Token `1AAPL:0.5` violates both step 4c (reserved `:`) and step 4e (starts with digit). The pipeline mandates 4c fires first.
+
+### 15.2 Reserved colon (step 4c) fires before max-length (step 4f)
+
+```
+Given the URL query string is "?equity=ABCDEFGHIJK:99"
+When the v1 query parser processes the input
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+And the error is NOT "Ticker too long: 'ABCDEFGHIJK:99' exceeds 10 character limit"
+```
+
+> **Why this matters:** Token `ABCDEFGHIJK:99` violates both step 4c (reserved `:`) and step 4f (length > 10). The pipeline mandates 4c fires first.
+
+### 15.3 Colon rejected on lowercase input (pre-normalization)
+
+```
+Given the URL query string is "?equity=aapl:0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+```
+
+> **Why this matters:** Step 4c (reserved char) runs on the trimmed but not-yet-uppercased token. A refactor that moves normalization (step 4g) before reserved-char checking must not change the error behavior for lowercase input containing colons.
+
+### 15.4 Empty token (step 4b) fires before reserved colon in next token (step 4c)
+
+```
+Given the URL query string is "?equity=,AAPL:0.5"
+When the v1 query parser processes the input
+Then an error is returned with message: "Empty ticker at position 1"
+```
+
+> **Why this matters:** Left-to-right token processing means the empty token at position 1 (step 4b) is detected before the colon at position 2 (step 4c). This re-pins the §13.1 invariant with an explicit pipeline-step rationale.
+
+---
+
 ## Summary of v1 Constraints
 
 | Rule                           | Limit / Behavior                                     |

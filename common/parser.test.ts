@@ -1,4 +1,4 @@
-// Unit tests for the v1 query parser — maps 1:1 to SCENARIOS.md sections 1–13
+// Unit tests for the v1 query parser — maps 1:1 to SCENARIOS.md sections 1–15
 // Each test references the scenario ID it covers.
 
 import { describe, it, expect } from 'vitest';
@@ -592,6 +592,60 @@ describe('#132 — Pinned colon rejection: exact v1 error string', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toBe(COLON_REJECTION_ERROR);
+    }
+  });
+});
+
+// ─── §15. Validation Pipeline Order — Drift Guardrail ───────────────────────
+// These tests pin the SCENARIOS.md validation pipeline order (steps 4a–4h).
+// A single token can violate multiple rules simultaneously. The pipeline MUST
+// report the error from the earliest step, not a later one. If a refactor
+// reorders the checks, these tests will catch the drift.
+
+describe('§15 Validation Pipeline Order — step priority (drift guardrail)', () => {
+  // Token "1AAPL:0.5" violates:
+  //   step 4c (reserved colon) AND step 4e (must start with letter)
+  // Pipeline order says 4c fires first → colon error, NOT starts-with-letter error.
+  it('15.1 Reserved colon (step 4c) fires before starts-with-letter (step 4e)', () => {
+    const result = parse('equity=1AAPL:0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
+    }
+  });
+
+  // Token "ABCDEFGHIJK:99" violates:
+  //   step 4c (reserved colon) AND step 4f (max length > 10)
+  // Pipeline order says 4c fires first → colon error, NOT ticker-too-long error.
+  it('15.2 Reserved colon (step 4c) fires before max-length (step 4f)', () => {
+    const result = parse('equity=ABCDEFGHIJK:99');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
+    }
+  });
+
+  // Token "aapl:0.5" — lowercase with colon. Verifies colon rejection fires
+  // on the raw (pre-normalization) token, before step 4g uppercases it.
+  // This guards against a refactor that normalizes first and then loses the
+  // original token form in the error path.
+  it('15.3 Colon rejected on lowercase input (pre-normalization, step 4c before 4g)', () => {
+    const result = parse('equity=aapl:0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
+    }
+  });
+
+  // Input ",AAPL:0.5" — empty token at position 1 (step 4b) AND colon at position 2 (step 4c).
+  // Left-to-right processing means position 1's empty-token error fires first.
+  // This is covered by §13.1 but we re-pin it here to explicitly document
+  // that step 4b (empty) precedes step 4c (reserved char) in the pipeline.
+  it('15.4 Empty token (step 4b) fires before reserved colon in next token (step 4c)', () => {
+    const result = parse('equity=,AAPL:0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('Empty ticker at position 1');
     }
   });
 });
