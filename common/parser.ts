@@ -6,6 +6,14 @@ export const MAX_PORTFOLIOS = 5;
 export const MAX_TICKERS_PER_PORTFOLIO = 20;
 export const MAX_TICKER_LENGTH = 10;
 
+/**
+ * Pinned v1 error string for colon rejection.
+ * This is the single source of truth for the ':' rejection message.
+ * Referenced by SCENARIOS.md §7.7 / #117 / #132.
+ */
+export const COLON_REJECTION_ERROR =
+  'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".';
+
 const VALID_TICKER_CHARS = /^[A-Za-z0-9.\-]+$/;
 const STARTS_WITH_LETTER = /^[A-Za-z]/;
 const RESERVED_COLON = /:/;
@@ -95,7 +103,7 @@ export function parsePortfolios(searchParams: URLSearchParams): ParseResult {
       if (RESERVED_COLON.test(trimmed)) {
         return {
           ok: false,
-          error: 'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".',
+          error: COLON_REJECTION_ERROR,
         };
       }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { COLON_REJECTION_ERROR } from '@common/parser';
 import { VALID_RANGES } from '@common/types';
 import type { PricePoint, RangeValue, SeriesData } from '@common/types';
 
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
   for (const t of tickerList) {
     if (t.includes(':')) {
       return NextResponse.json(
-        { error: 'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".' },
+        { error: COLON_REJECTION_ERROR },
         { status: 400 }
       );
     }

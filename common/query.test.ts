@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { parseCompareQuery } from './query';
+import { COLON_REJECTION_ERROR } from './parser';
 
 function parse(query: string) {
   return parseCompareQuery(new URLSearchParams(query));
@@ -46,7 +47,7 @@ describe('parseCompareQuery — equity parsing (delegates to v1 parser)', () => 
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+    expect(result.error).toBe(COLON_REJECTION_ERROR);
   });
 });
 
@@ -148,6 +149,6 @@ describe('parseCompareQuery — full query integration', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     // Equity error comes first since we parse equity first
-    expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+    expect(result.error).toBe(COLON_REJECTION_ERROR);
   });
 });
