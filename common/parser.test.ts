@@ -2,7 +2,7 @@
 // Each test references the scenario ID it covers.
 
 import { describe, it, expect } from 'vitest';
-import { parsePortfolios, MAX_PORTFOLIOS, MAX_TICKERS_PER_PORTFOLIO, MAX_TICKER_LENGTH } from './parser';
+import { parsePortfolios, MAX_PORTFOLIOS, MAX_TICKERS_PER_PORTFOLIO, MAX_TICKER_LENGTH, COLON_REJECTION_ERROR } from './parser';
 
 function parse(query: string) {
   return parsePortfolios(new URLSearchParams(query));
@@ -200,7 +200,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -209,7 +209,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL%3A0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -233,7 +233,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL,MSFT:0.3,GOOG');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -259,9 +259,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(
-        'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".'
-      );
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -269,9 +267,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL:0.5,MSFT');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(
-        'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".'
-      );
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 });
@@ -362,7 +358,7 @@ describe('§9 URL Encoding', () => {
     const result = parse('equity=MSFT%3A0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 });
@@ -448,7 +444,7 @@ describe('§12 Combined Edge Cases', () => {
     const result = parse('equity=AAPL:0.5,AAPL');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -456,7 +452,7 @@ describe('§12 Combined Edge Cases', () => {
     const result = parse('equity=AAPL,MSFT&equity=GOOG:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 });
@@ -503,13 +499,11 @@ describe('§13 Error Behavior Contract', () => {
 // ─── §14. v2 Weight Syntax — Explicitly Reserved (rejection coverage) ────────
 
 describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
-  const PINNED_COLON_ERROR = 'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".';
-
   it('AAPL:0.5 is rejected with exact pinned error', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -517,7 +511,7 @@ describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
     const result = parse('equity=AAPL%3A0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -525,7 +519,7 @@ describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
     const result = parse('equity=AAPL:60,MSFT:40');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -533,7 +527,7 @@ describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
     const result = parse('equity=AAPL:0.5,MSFT');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -561,14 +555,11 @@ describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
 // MUST fail — that is the point of pinning.
 
 describe('#132 — Pinned colon rejection: exact v1 error string', () => {
-  const PINNED_COLON_ERROR =
-    'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".';
-
   it('rejects colon within a single ticker token (AAPL:0.5)', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -576,7 +567,7 @@ describe('#132 — Pinned colon rejection: exact v1 error string', () => {
     const result = parse('equity=AAPL,MSFT:0.3,GOOG');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -584,7 +575,7 @@ describe('#132 — Pinned colon rejection: exact v1 error string', () => {
     const result = parse('equity=AAPL&equity=GOOG:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -592,7 +583,7 @@ describe('#132 — Pinned colon rejection: exact v1 error string', () => {
     const result = parse('equity=TSLA%3A0.7');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 
@@ -600,7 +591,7 @@ describe('#132 — Pinned colon rejection: exact v1 error string', () => {
     const result = parse('equity=AAPL,MSFT,GOOG:0.2');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe(PINNED_COLON_ERROR);
+      expect(result.error).toBe(COLON_REJECTION_ERROR);
     }
   });
 });
