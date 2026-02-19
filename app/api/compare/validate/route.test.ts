@@ -35,11 +35,11 @@ describe('/api/compare/validate', () => {
     expect(body.error).toBe('Empty equity parameter');
   });
 
-  it('returns 400 for colon (v2 reserved syntax)', async () => {
+  it('returns 400 for colon (v2 reserved syntax) — exact pinned error', async () => {
     const res = await GET(makeRequest('equity=AAPL:0.5'));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain('colons are reserved for v2 weight syntax');
+    expect(body.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
   });
 
   it('returns 400 for duplicate tickers', async () => {

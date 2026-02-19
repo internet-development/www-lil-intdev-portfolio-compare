@@ -90,11 +90,12 @@ export function parsePortfolios(searchParams: URLSearchParams): ParseResult {
         };
       }
 
-      // Step 4c: Reserved characters — colon (scenarios 7.1, 7.2, 7.4)
+      // Step 4c: Reserved characters — colon (scenarios 7.1, 7.2, 7.4, 7.7, 7.8)
+      // Pinned v1 error string from SCENARIOS.md §7.7 / #117
       if (RESERVED_COLON.test(trimmed)) {
         return {
           ok: false,
-          error: `Invalid character ':' in ticker '${trimmed}' — colons are reserved for v2 weight syntax`,
+          error: 'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".',
         };
       }
 

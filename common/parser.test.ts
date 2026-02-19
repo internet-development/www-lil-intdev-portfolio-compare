@@ -200,7 +200,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax");
+      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
     }
   });
 
@@ -209,7 +209,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL%3A0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax");
+      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
     }
   });
 
@@ -233,7 +233,7 @@ describe('§7 Reserved Syntax Rejection', () => {
     const result = parse('equity=AAPL,MSFT:0.3,GOOG');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Invalid character ':' in ticker 'MSFT:0.3' — colons are reserved for v2 weight syntax");
+      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
     }
   });
 
@@ -250,6 +250,28 @@ describe('§7 Reserved Syntax Rejection', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toBe("Invalid character '|' in ticker 'AAPL|MSFT'");
+    }
+  });
+
+  // §7.7 and §7.8: Pinned v1 error string enforcement (#117/#114)
+  // These tests use exact string equality (.toBe), NOT substring matching (.toContain)
+  it('7.7 Weight syntax with single ticker is rejected — exact pinned error (#117)', () => {
+    const result = parse('equity=AAPL:0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(
+        'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".'
+      );
+    }
+  });
+
+  it('7.8 Weight syntax with multiple tickers is rejected — exact pinned error (#117)', () => {
+    const result = parse('equity=AAPL:0.5,MSFT');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(
+        'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".'
+      );
     }
   });
 });
@@ -340,7 +362,7 @@ describe('§9 URL Encoding', () => {
     const result = parse('equity=MSFT%3A0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Invalid character ':' in ticker 'MSFT:0.5' — colons are reserved for v2 weight syntax");
+      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
     }
   });
 });
@@ -426,7 +448,7 @@ describe('§12 Combined Edge Cases', () => {
     const result = parse('equity=AAPL:0.5,AAPL');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Invalid character ':' in ticker 'AAPL:0.5' — colons are reserved for v2 weight syntax");
+      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
     }
   });
 
@@ -434,7 +456,7 @@ describe('§12 Combined Edge Cases', () => {
     const result = parse('equity=AAPL,MSFT&equity=GOOG:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toBe("Invalid character ':' in ticker 'GOOG:0.5' — colons are reserved for v2 weight syntax");
+      expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
     }
   });
 });
@@ -457,7 +479,7 @@ describe('§13 Error Behavior Contract', () => {
     const cases = [
       { query: 'equity=AAPL,,MSFT', should_include: 'position 2' },
       { query: 'equity=AA$PL', should_include: "ticker 'AA$PL'" },
-      { query: 'equity=AAPL:0.5', should_include: "ticker 'AAPL:0.5'" },
+      { query: 'equity=AAPL:0.5', should_include: 'Weights (:) are not supported in v1' },
       { query: 'equity=AAPL,AAPL', should_include: 'AAPL' },
     ];
     for (const { query, should_include } of cases) {
@@ -481,43 +503,53 @@ describe('§13 Error Behavior Contract', () => {
 // ─── §14. v2 Weight Syntax — Explicitly Reserved (rejection coverage) ────────
 
 describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
-  it('AAPL:0.5 is rejected', () => {
+  const PINNED_COLON_ERROR = 'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".';
+
+  it('AAPL:0.5 is rejected with exact pinned error', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('colons are reserved for v2 weight syntax');
+      expect(result.error).toBe(PINNED_COLON_ERROR);
     }
   });
 
-  it('AAPL%3A0.5 (URL-encoded) is rejected', () => {
+  it('AAPL%3A0.5 (URL-encoded) is rejected with exact pinned error', () => {
     const result = parse('equity=AAPL%3A0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('colons are reserved for v2 weight syntax');
+      expect(result.error).toBe(PINNED_COLON_ERROR);
     }
   });
 
-  it('AAPL:60,MSFT:40 is rejected', () => {
+  it('AAPL:60,MSFT:40 is rejected with exact pinned error', () => {
     const result = parse('equity=AAPL:60,MSFT:40');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('colons are reserved for v2 weight syntax');
+      expect(result.error).toBe(PINNED_COLON_ERROR);
     }
   });
 
-  it('AAPL=0.5 is rejected', () => {
-    const result = parse('equity=AAPL%3D0.5');
+  it('AAPL:0.5,MSFT (mixed weighted/unweighted) is rejected with exact pinned error', () => {
+    const result = parse('equity=AAPL:0.5,MSFT');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('equals signs are reserved');
+      expect(result.error).toBe(PINNED_COLON_ERROR);
     }
   });
 
-  it('AAPL%3D0.5 (URL-encoded) is rejected', () => {
+  it('AAPL=0.5 is rejected with exact equals error', () => {
     const result = parse('equity=AAPL%3D0.5');
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain('equals signs are reserved');
+      expect(result.error).toBe("Invalid character '=' in ticker 'AAPL=0.5' — equals signs are reserved");
+    }
+  });
+
+  it('AAPL%3D0.5 (URL-encoded) is rejected with exact equals error', () => {
+    const result = parse('equity=AAPL%3D0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe("Invalid character '=' in ticker 'AAPL=0.5' — equals signs are reserved");
     }
   });
 });
