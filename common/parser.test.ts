@@ -554,6 +554,57 @@ describe('§14 v2 Weight Syntax — Explicitly Reserved', () => {
   });
 });
 
+// ─── #132: Pinned ':' rejection contract ────────────────────────────────────
+// These tests enforce the exact v1 error string for colon rejection (#117/#114).
+// They use .toBe() (exact match) per SCENARIOS.md §7.10.
+// If the parser is ever changed to accept ':' (v2 weight syntax), these tests
+// MUST fail — that is the point of pinning.
+
+describe('#132 — Pinned colon rejection: exact v1 error string', () => {
+  const PINNED_COLON_ERROR =
+    'Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".';
+
+  it('rejects colon within a single ticker token (AAPL:0.5)', () => {
+    const result = parse('equity=AAPL:0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(PINNED_COLON_ERROR);
+    }
+  });
+
+  it('rejects colon within a comma-separated list (AAPL,MSFT:0.3,GOOG)', () => {
+    const result = parse('equity=AAPL,MSFT:0.3,GOOG');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(PINNED_COLON_ERROR);
+    }
+  });
+
+  it('rejects colon in a multi-portfolio second param (equity=AAPL&equity=GOOG:0.5)', () => {
+    const result = parse('equity=AAPL&equity=GOOG:0.5');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(PINNED_COLON_ERROR);
+    }
+  });
+
+  it('rejects URL-encoded colon %3A with exact pinned error', () => {
+    const result = parse('equity=TSLA%3A0.7');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(PINNED_COLON_ERROR);
+    }
+  });
+
+  it('rejects colon even when preceding token is valid (guard against partial acceptance)', () => {
+    const result = parse('equity=AAPL,MSFT,GOOG:0.2');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(PINNED_COLON_ERROR);
+    }
+  });
+});
+
 // ─── Exported Constants ──────────────────────────────────────────────────────
 
 describe('Exported constants match SCENARIOS.md', () => {
