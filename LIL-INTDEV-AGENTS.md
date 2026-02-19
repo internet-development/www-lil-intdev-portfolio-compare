@@ -17,7 +17,7 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 | **`:` is reserved** | A colon inside a ticker token (e.g. `AAPL:0.5`) must be **rejected** with a clear v2-reserved message. Never silently accept it. |
 | **`=` is reserved** | Same treatment as `:`. |
 
-The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A30 for end-to-end behavior, B1–B15 for UI wiring. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md. See also the [v1 Parsing Invariants](./SCENARIOS.md#v1-parsing-invariants) section for pinned error strings and enforcement points.
+The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–15 for the parser (§1–§13 core rules, §14 v2-reserved syntax, §15 pipeline-order drift guardrails), A1–A30 for end-to-end behavior, B1–B15 for UI wiring. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md. See also the [v1 Parsing Invariants](./SCENARIOS.md#v1-parsing-invariants) section for pinned error strings and enforcement points.
 
 ### v1 Parsing Invariants (Contract)
 
@@ -26,7 +26,7 @@ The following invariants are pinned by the v1 contract and enforced by unit test
 - **Exact error strings are pinned in [`SCENARIOS.md`](./SCENARIOS.md#v1-parsing-invariants) and enforced by unit tests.** The colon-rejection message (`"Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."`) is established in #117/#114 and tested with exact-match assertions (`.toBe()`), not substring matching. See [SCENARIOS.md §7](./SCENARIOS.md#v1-reserved-syntax-rejection) (especially §7.7–§7.10) for the full specification.
 - **Reserved-character rejection is tested across all entry points.** Both the client-side parser ([`common/parser.ts`](./common/parser.ts)) and the server-side validate endpoint ([`app/api/compare/validate/route.ts`](./app/api/compare/validate/route.ts)) reject `:` and `=` with the same pinned messages. See [SCENARIOS.md §7.9](./SCENARIOS.md#v1-colon-entry-points) for the entry-point coverage table.
 - **Test files enforcing these invariants:**
-  - [`common/parser.test.ts`](./common/parser.test.ts) — 70 tests covering SCENARIOS.md §1–§13, including all colon/equals rejection scenarios
+  - [`common/parser.test.ts`](./common/parser.test.ts) — 74 tests covering SCENARIOS.md §1–§15, including all colon/equals rejection scenarios and drift guardrail tests
   - [`common/query.test.ts`](./common/query.test.ts) — 16 tests for full query parsing (equity + benchmark + range + amount)
   - [`common/portfolio.test.ts`](./common/portfolio.test.ts) — 11 tests for equal-weight construction and return computation
   - [`app/api/compare/validate/route.test.ts`](./app/api/compare/validate/route.test.ts) — 9 tests for the server-side validation endpoint
@@ -112,7 +112,7 @@ New contributor or agent? Read these files in order:
 | --- | --- | --- |
 | 1 | [`SCENARIOS.md`](./SCENARIOS.md) | **The acceptance contract.** Sections 1–13 define every valid/invalid parser input. Sections A1–A30 define end-to-end behavior. Sections B1–B15 define UI wiring scenarios. This is the single source of truth — when in doubt, defer here. |
 | 2 | `app/page.tsx` | **The compare page.** Fully wired client component: URL parsing → data fetch → normalization → chart render. Start here to understand the end-to-end flow. |
-| 3 | `common/parser.ts` | **The v1 query parser.** Strict validation of `equity=` input. Rejects reserved v2 syntax (`:`, `=`). 70 unit tests in `parser.test.ts`. |
+| 3 | `common/parser.ts` | **The v1 query parser.** Strict validation of `equity=` input. Rejects reserved v2 syntax (`:`, `=`). 74 unit tests in `parser.test.ts`. |
 | 4 | `app/api/market-data/route.ts` | **Server-side data proxy.** Fetches equity prices from Yahoo Finance, keeps API keys off the client, 1-hour cache. |
 | 5 | `common/market-data.ts` | **Normalization engine.** Converts raw price series to indexed % change for apples-to-apples comparison. |
 
@@ -147,7 +147,7 @@ Before submitting any PR, run through the verification loop to confirm nothing i
 
 The source of truth for all URL and query-parameter parsing behavior is [`SCENARIOS.md`](./SCENARIOS.md).
 
-- **v1 acceptance contract** — `SCENARIOS.md` sections 1–13 define every valid and invalid input for the `equity=` query parser. Any behavior not listed there is undefined and must be rejected.
+- **v1 acceptance contract** — `SCENARIOS.md` sections 1–15 define every valid and invalid input for the `equity=` query parser (§1–§13 core rules, §14 v2-reserved syntax, §15 pipeline-order drift guardrails). Any behavior not listed there is undefined and must be rejected.
 - **End-to-end scenarios** — `SCENARIOS.md` sections A1–A30 cover the full user experience including benchmarks, time ranges, error states, auth-free operation, and dollar-amount simulation.
 - **When adding or changing parser behavior**, update `SCENARIOS.md` first, then update tests to match. Tests must cover every scenario listed in the document.
 - **When tests fail**, check `SCENARIOS.md` to determine whether the test or the implementation is wrong. The scenarios file is the contract — implementation follows it, not the other way around.
@@ -168,7 +168,7 @@ The source of truth for all URL and query-parameter parsing behavior is [`SCENAR
 The client-side query parser lives at `common/parser.ts` (equity validation) and `common/query.ts` (full query entry point). Together they are responsible for:
 
 1. Reading `equity=`, `benchmark=`, `range=`, and `amount=` from the browser URL
-2. Validating inputs per SCENARIOS.md sections 1–13 (equity), benchmark/range/amount contracts
+2. Validating inputs per SCENARIOS.md sections 1–15 (equity), benchmark/range/amount contracts
 3. Returning either a parsed `CompareQuery` or a fail-fast error
 4. Translating param names before calling the API routes
 
@@ -291,7 +291,7 @@ common/
   market-data.ts           ✓ normalization helpers (normalizeSeries, normalizeAllSeries)
   types.ts                 ✓ shared TypeScript interfaces (PricePoint, SeriesData, RangeValue, BenchmarkValue) + validation constants (VALID_RANGES, VALID_BENCHMARKS)
   parser.ts                ✓ v1 strict equity parser (see §3.2)
-  parser.test.ts           ✓ 70 unit tests covering SCENARIOS.md §1–§13
+  parser.test.ts           ✓ 74 unit tests covering SCENARIOS.md §1–§15
   query.ts                 ✓ full query entry point: equity + benchmark + range + amount parsing
   query.test.ts            ✓ 16 unit tests for full query parsing
   portfolio.ts             ✓ equal-weight portfolio construction (1/N weights)
@@ -382,7 +382,7 @@ The v2 weighted-portfolio feature is **fully specified but not yet shipped**. Ke
 
 | Stage | Status | Key files | Notes |
 | --- | --- | --- | --- |
-| **Parse** | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` | 106 unit tests passing (Vitest). Covers SCENARIOS.md §1–§13. |
+| **Parse** | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` | 110 unit tests passing (Vitest). Covers SCENARIOS.md §1–§15. |
 | **Fetch** | Done | `app/api/market-data/route.ts`, `app/api/benchmark/route.ts` | Yahoo Finance (free, no key). 1-hour cache. See §4.2.1 for constraints. |
 | **Compute** | Done | `common/market-data.ts`, `common/portfolio.ts` | Normalization to % change + equal-weight return computation. |
 | **Render** | Done | `app/page.tsx`, `components/Chart.tsx`, `components/Summary.tsx`, `components/ErrorState.tsx`, `components/LandingState.tsx` | Full pipeline: parse → fetch → normalize → Chart + Summary table. Error and landing states extracted to dedicated components. Dollar-amount simulation via `?amount=` param. |
@@ -567,16 +567,16 @@ npm test              # single run
 npm run test:watch    # watch mode
 ```
 
-**Current test coverage (106 tests passing):**
+**Current test coverage (110 tests passing):**
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
-| `common/parser.test.ts` | 70 | SCENARIOS.md §1–§13 (all v1 parser scenarios) |
+| `common/parser.test.ts` | 74 | SCENARIOS.md §1–§15 (all v1 parser scenarios + drift guardrails) |
 | `common/query.test.ts` | 16 | Full query parsing: equity + benchmark + range + amount |
 | `common/portfolio.test.ts` | 11 | Equal-weight construction + weighted return computation |
 | `app/api/compare/validate/route.test.ts` | 9 | Server-side validation endpoint |
 
-- Every scenario in `SCENARIOS.md` sections 1–13 has a corresponding unit test.
+- Every scenario in `SCENARIOS.md` sections 1–15 has a corresponding unit test.
 - End-to-end scenarios (A1–A30, B1–B15) should have integration or e2e tests as the UI is built out.
 
 ### 13.3 Entrypoints
@@ -674,4 +674,4 @@ Issue [#99](https://github.com/internet-development/www-lil-intdev-portfolio-com
 
 ### Open issues (not v1 blockers)
 
-Remaining open issues are `memo`-labeled items (v2 weight syntax pinning), `discussion` threads, and `plan` tracking — none are v1 work blockers. The v1 product is complete: parse → fetch → normalize → chart + summary, with 106 passing tests covering SCENARIOS.md §1–§13.
+Remaining open issues are `memo`-labeled items (v2 weight syntax pinning), `discussion` threads, and `plan` tracking — none are v1 work blockers. The v1 product is complete: parse → fetch → normalize → chart + summary, with 110 passing tests covering SCENARIOS.md §1–§15.

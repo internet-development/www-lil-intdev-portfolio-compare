@@ -1574,7 +1574,7 @@ Quick reference for which scenarios are testable today vs. awaiting UI work.
 
 | Scenario | Status | Notes |
 | --- | --- | --- |
-| **§1–§13** (parser) | **106 unit tests passing** | Run `npm test` to verify. All parser scenarios have dedicated tests. |
+| **§1–§13** (parser) | **110 unit tests passing** | Run `npm test` to verify. All parser scenarios have dedicated tests. |
 | **§14** (v2 reserved) | **Tested** | Parser rejects `:` and `=` with v2-reserved messages. |
 | **A1–A8** (happy path) | **Implemented** | Chart renders, attribution visible, all ranges work. |
 | **A9–A10** (invalid ticker) | **Implemented** | Fetch error displayed, no partial render. |
@@ -1617,7 +1617,7 @@ npm install
 
 # 2. Run unit tests (parser + query + portfolio + validate endpoint)
 npm test
-# Expected: 106 tests passing, 0 failures
+# Expected: 110 tests passing, 0 failures
 
 # 3. Start the dev server
 npm run dev
