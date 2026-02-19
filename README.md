@@ -7,7 +7,7 @@ Compare equity portfolio performance against commodity and crypto benchmarks. Bu
 | Document | Purpose |
 | --- | --- |
 | [LIL-INTDEV-AGENTS.md](./LIL-INTDEV-AGENTS.md) | Agent and contributor guidelines — architecture, stack, data flow, directory structure, and v1 constraints |
-| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A27, B1–B15), and the [canonical verification checklist](./SCENARIOS.md#local-verification-checklist) |
+| [SCENARIOS.md](./SCENARIOS.md) | The v1 acceptance contract — every valid/invalid parser input (§1–§13), end-to-end scenarios (A1–A30, B1–B15), and the [canonical verification checklist](./SCENARIOS.md#local-verification-checklist) |
 
 Start here if you are a new collaborator or agent.
 
@@ -125,8 +125,8 @@ http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y
 After setup, run through these three checks to confirm the app is working:
 
 - [ ] **Happy path (A25):** Open `http://localhost:10000/?equity=AAPL,MSFT&benchmark=gold&range=1y` — you should see a portfolio summary card and a performance chart with solid lines for AAPL/MSFT and a dashed line for Gold.
-- [ ] **Invalid input (A26):** Open `http://localhost:10000/?equity=AAPL:0.5` — you should see an error banner containing *"colons are reserved for v2 weight syntax"*. No chart renders.
-- [ ] **Unit tests:** Run `npm test` — all 98 tests should pass (parser, query, portfolio, validation endpoint).
+- [ ] **Invalid input (A26):** Open `http://localhost:10000/?equity=AAPL:0.5` — you should see an error banner: *"Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT"."* No chart renders.
+- [ ] **Unit tests:** Run `npm test` — all 110 tests should pass (parser, query, portfolio, validation endpoint).
 
 > **Authoritative source:** The full verification procedure — including curl-based API tests, validation endpoint checks, and additional browser scenarios — lives in [SCENARIOS.md → Local Verification Checklist](./SCENARIOS.md#local-verification-checklist). The checklist above is a quick-reference summary; when in doubt, follow SCENARIOS.md.
 
@@ -178,7 +178,7 @@ The app works without a paid API key when using free-tier data providers.
 
 | Stage | Status | Notes |
 | --- | --- | --- |
-| **Parse** (URL → validated query) | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` — 98 unit tests passing |
+| **Parse** (URL → validated query) | Done | `common/parser.ts`, `common/query.ts`, `common/portfolio.ts` — 110 unit tests passing |
 | **Fetch** (API routes → market data) | Done | `/api/market-data` and `/api/benchmark` return JSON via Yahoo Finance (free, no key) |
 | **Compute** (normalize + weight) | Done | `common/market-data.ts` normalizes to % change; `common/portfolio.ts` computes 1/N weights |
 | **Render** (chart + summary) | Done | `app/page.tsx` wires parse → fetch → compute → render; `Chart.tsx` renders normalized % change line chart |
