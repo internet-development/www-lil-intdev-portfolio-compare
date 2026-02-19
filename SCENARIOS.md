@@ -342,6 +342,44 @@ And no chart is rendered
 
 > **Implementation note:** The `:` is detected during per-token validation (step 4c in the validation pipeline). The error message is the same regardless of whether the colon appears in the first or a subsequent token — the pinned string from #117 takes precedence over the per-character error format used in §7.1–7.4. Scenarios 7.1–7.4 are updated to use this canonical message. See also #114, #118, #121.
 
+### 7.9 Colon rejection applies to all entry points that accept user tickers (#132)
+
+The `:` rejection contract applies **everywhere user-entered tickers or portfolios are parsed**. In v1, the only query parameter that accepts ticker input is `equity=`. This parameter is parsed in two code paths:
+
+| Entry point | File | How `:` is rejected |
+| --- | --- | --- |
+| **Client-side parser** | `common/parser.ts` → `parsePortfolios()` | Checks each token for `:` before any other character validation. Returns the pinned error string. |
+| **Server-side validate endpoint** | `app/api/compare/validate/route.ts` | Delegates to `parsePortfolios()` — same parser, same error. Returns HTTP 400 with `{ "error": "..." }`. |
+
+No other v1 query parameter (`benchmark`, `range`, `amount`) accepts ticker-like input, so `:` rejection is scoped to `equity=` only.
+
+**Concrete example — full URL showing expected failure:**
+
+```
+URL:    http://localhost:10000/?equity=AAPL:0.6,MSFT:0.4&benchmark=gold&range=1y
+Result: HTTP 400 (via validate endpoint) / "Invalid query" error banner (via client parser)
+Error:  "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+```
+
+```sh
+# Verify via the server-side validate endpoint:
+curl -s "http://localhost:10000/api/compare/validate?equity=AAPL:0.6,MSFT:0.4" | jq '.error'
+# Expected: "Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."
+```
+
+**Why `:` is rejected:** The colon character is **reserved for v2 weight syntax** (e.g., `equity=AAPL:0.6,MSFT:0.4`). Rejecting it in v1 ensures forward compatibility — users receive a clear message explaining the v2 reservation rather than a confusing parse failure. See §14 for the full v2 design and [`docs/weights-v2.md`](./docs/weights-v2.md) for the detailed v2 contract.
+
+### 7.10 Test assertion strategy for the pinned error string (#132)
+
+Tests for the `:` rejection use **exact string equality** (`.toBe()`), **not** substring matching (`.toContain()`). This is the default and recommended approach.
+
+| Assertion method | Used for | Rationale |
+| --- | --- | --- |
+| **Exact match** (`.toBe()`) | All colon-rejection tests (§7.1, §7.2, §7.4, §7.7, §7.8, §9.4, §12.3, §12.4, §14 table rows) | The pinned error string is a **v1 contract commitment** — any change to the message wording, punctuation, or casing is a breaking change that must be intentional. Exact match catches unintended drift. |
+| Substring match (`.toContain()`) | Only §13.2 (generic "error includes context" check) | Used in the meta-test that verifies errors are debuggable, where the exact message format varies by error type. |
+
+**If a future change requires relaxing to substring matching**, update this section to document the decision and the stable substring to assert (e.g., `"Weights (:) are not supported in v1"`). Until then, **default to exact match**.
+
 ---
 
 ## 8. Invalid Ticker Format
