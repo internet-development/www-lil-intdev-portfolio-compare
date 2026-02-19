@@ -19,6 +19,19 @@ Agent-facing reference for **www-lil-intdev-portfolio-compare** — a small web 
 
 The full, testable query contract lives in [`SCENARIOS.md`](./SCENARIOS.md) — sections 1–13 for the parser, A1–A30 for end-to-end behavior, B1–B15 for UI wiring. **That file is the single source of truth.** When in doubt, defer to SCENARIOS.md.
 
+### v1 Parsing Invariants (Contract)
+
+The following invariants are pinned by the v1 contract and enforced by unit tests. Any change to these is a breaking change.
+
+- **Exact error strings are pinned in [`SCENARIOS.md`](./SCENARIOS.md) and enforced by unit tests.** The colon-rejection message (`"Weights (:) are not supported in v1. Use a comma-separated list of tickers like \"AAPL,MSFT\"."`) is established in #117/#114 and tested with exact-match assertions (`.toBe()`), not substring matching. See [SCENARIOS.md §7](./SCENARIOS.md) (especially §7.7–§7.10) for the full specification.
+- **Reserved-character rejection is tested across all entry points.** Both the client-side parser ([`common/parser.ts`](./common/parser.ts)) and the server-side validate endpoint ([`app/api/compare/validate/route.ts`](./app/api/compare/validate/route.ts)) reject `:` and `=` with the same pinned messages. See [SCENARIOS.md §7.9](./SCENARIOS.md) for the entry-point coverage table.
+- **Test files enforcing these invariants:**
+  - [`common/parser.test.ts`](./common/parser.test.ts) — 62 tests covering SCENARIOS.md §1–§13, including all colon/equals rejection scenarios
+  - [`common/query.test.ts`](./common/query.test.ts) — 16 tests for full query parsing (equity + benchmark + range + amount)
+  - [`common/portfolio.test.ts`](./common/portfolio.test.ts) — 11 tests for equal-weight construction and return computation
+  - [`app/api/compare/validate/route.test.ts`](./app/api/compare/validate/route.test.ts) — 9 tests for the server-side validation endpoint
+- **Validation pipeline order is defined in [SCENARIOS.md (top)](./SCENARIOS.md)** — fail-fast, left-to-right, first error wins. The pipeline order (portfolio count → empty value → split → per-token checks → ticker count) is the contract; implementation must follow it.
+
 ---
 
 ## 1. Architecture Overview
