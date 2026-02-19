@@ -42,11 +42,11 @@ describe('parseCompareQuery — equity parsing (delegates to v1 parser)', () => 
     expect(result.query.portfolios).toHaveLength(0);
   });
 
-  it('invalid equity propagates parser error', () => {
+  it('invalid equity propagates parser error — exact pinned colon error', () => {
     const result = parse('equity=AAPL:0.5');
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error).toContain('colons are reserved for v2 weight syntax');
+    expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
   });
 });
 
@@ -148,6 +148,6 @@ describe('parseCompareQuery — full query integration', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     // Equity error comes first since we parse equity first
-    expect(result.error).toContain('colons are reserved for v2 weight syntax');
+    expect(result.error).toBe('Weights (:) are not supported in v1. Use a comma-separated list of tickers like "AAPL,MSFT".');
   });
 });
